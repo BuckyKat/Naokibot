@@ -94,21 +94,20 @@ class buckycog:
         userinfo['user_id'] = userid
         db.users.insert_one(userinfo)
 
-
     @commands.group(pass_context=True, name='tfs', case_insensitive=True)
     async def buckycog(self, ctx):
         if ctx.invoked_subcommand is None:
             await self.bot.send_cmd_help(ctx)
 
     @buckycog.command(name='char', alias="character", pass_context=True)
-    async def character(self, ctx, characterNumber:str):
+    async def character(self, ctx, characterNumber: str):
         """Fetches and displays a given character's profile"""
 
         server = ctx.message.server
         soupObject = await GETrecentfromNumber(characterNumber)
         profile = soupObject.find(class_="mini-profile")
 
-        if profile == None:
+        if profile is None:
             await self.bot.say("It seems like that character doesn't exist, has been deleted, or hasn't made any posts.\nWhatever the case may be, I can't find their profile. ¯\\_(ツ)_/¯")
         else:
             stripped_strings = []
@@ -158,7 +157,7 @@ class buckycog:
 
     @buckycog.command(name='test', pass_context=True, no_pm=True, hidden=True)
     async def test(self, ctx, *, user: discord.Member=None):
-        if user == None:
+        if user is None:
             user = ctx.message.author
         await updateRole(user)
         userinfo = db.users.find_one({'user_id': user.id})
@@ -169,7 +168,6 @@ class buckycog:
 
         await self.bot.say(muhString)
         await self.bot.say(muhString2)
-
 
     @checks.is_owner()
     @buckycog.command(name='updateall', pass_context=True, no_pm=True)
@@ -182,12 +180,10 @@ class buckycog:
             await update(self, ctx, member)
         await self.bot.say("I've finished updating information for all users. _Wew._")
 
-
-
     @buckycog.command(name='update', pass_context=True, no_pm=True, alias="register")
     async def update(self, ctx, *, user: discord.Member=None):
         """Updates database information and role for a given user"""
-        if user == None:
+        if user is None:
             user = ctx.message.author
         await self._create_user(user)
         userinfo = db.users.find_one({'user_id': user.id})
@@ -228,41 +224,17 @@ class buckycog:
         except AttributeError as e:
             pass
 
-
     @buckycog.command(name="profile", pass_context=True, no_pm=True)
     async def profile(self, ctx, *, user: discord.Member=None):
         """Displays a given user's profile"""
-        if user == None:
+        if user is None:
             user = ctx.message.author
         await self._create_user(user)
         userinfo = db.users.find_one({'user_id': user.id})
         await self.bot.send_typing(ctx.message.channel)
 
-        em = await self.profile_text(user, userinfo)
+        em = await self.profileEmbed(user, userinfo)
         await self.bot.say(embed=em)
-
-    async def profile_text(self, user, userinfo):
-        def test_empty(text):
-            if text == '':
-                return "None"
-            else:
-                return text
-        avatarURL = user.avatar_url
-        isActive = userinfo["active"]
-        role = userinfo["role"]
-        total_posts = userinfo["total_posts"]
-        displayNames = userinfo["character_names"]
-
-        em = discord.Embed(description=str(
-            ', '.join(displayNames)), colour=user.colour)
-        em.add_field(name="Characters:", value=len(
-            userinfo["registered_characters"]))
-        em.add_field(name="Total Posts:", value=total_posts)
-        em.add_field(name="Active:", value=isActive)
-        em.add_field(name="Role:", value=role)
-        em.set_author(name="Profile for {}".format(user.name), url=avatarURL)
-        em.set_thumbnail(url=avatarURL)
-        return em
 
     @buckycog.command(name="registerchars", pass_context=True, no_pm=True)
     async def registerchars(self, ctx, *, arg):
@@ -280,8 +252,8 @@ class buckycog:
     @checks.admin_or_permissions(manage_roles=True)
     @buckycog.command(name="assignchars", pass_context=True, no_pm=True)
     async def assignchars(self, ctx, user: discord.Member=None, *, arg):
-        """Assigns characters to a given user. Character numbers should be seperated by spaces."""
-        if user == None:
+        """Assigns characters to a user. Character numbers should be seperated by spaces."""
+        if user is None:
             await self.bot.say("You need to specify a user.")
         await self._create_user(user)
 
@@ -302,8 +274,8 @@ class buckycog:
 
     @buckycog.command(name="display_characters", pass_context=True, no_pm=True)
     async def display_characters(self, ctx, *, user: discord.Member=None):
-        """Outposts the display names and character numbers associated with a given user"""
-        if user == None:
+        """Display names and character numbers of a given user"""
+        if user is None:
             user = ctx.message.author
         await self._create_user(user)
         userinfo = db.users.find_one({'user_id': user.id})
@@ -320,8 +292,8 @@ class buckycog:
 
     @buckycog.command(name="totalposts", pass_context=True, no_pm=True)
     async def display_total_posts(self, ctx, *, user: discord.Member=None):
-        """Fetches and displays the total number of posts across a given user's registered characters"""
-        if user == None:
+        """Total number of posts across a given user's registered characters"""
+        if user is None:
             user = ctx.message.author
         await self._create_user(user)
         userinfo = db.users.find_one({'user_id': user.id})
@@ -339,8 +311,8 @@ class buckycog:
 
     @buckycog.command(name='posts', pass_context=True, no_pm=True)
     async def posts(self, ctx, *, user: discord.Member=None):
-        """Displays an embed showing a posts overview for a given user"""
-        if user == None:
+        """A posts overview for a given user"""
+        if user is None:
             user = ctx.message.author
         await self._create_user(user)
         userinfo = db.users.find_one({'user_id': user.id})
@@ -391,7 +363,7 @@ class buckycog:
     @buckycog.command(name='lastposts', pass_context=True, no_pm=True)
     async def lastPosts(self, ctx, *, user: discord.Member=None):
         """Displays an embed showing the last posts for a given user's registered characters"""
-        if user == None:
+        if user is None:
             user = ctx.message.author
         await self._create_user(user)
         userinfo = db.users.find_one({'user_id': user.id})
@@ -407,6 +379,28 @@ class buckycog:
         em = await self.lastPostsEmbed(user, userinfo, profiles_list)
         await self.bot.send_message(channel, "", embed=em)
 
+    @buckycog.command(name='attribute', pass_context=True, no_pm=True)
+    async def attribute(self, ctx, attribute: str, user: discord.Member=None):
+        """Displays an embed showing a given attribute for a given user's registered characters"""
+        if user is None:
+            user = ctx.message.author
+        await self._create_user(user)
+        userinfo = db.users.find_one({'user_id': user.id})
+        await self.bot.send_typing(ctx.message.channel)
+        channel = ctx.message.channel
+        attributes_list = []
+        profiles_list = []
+
+        for characterNumber in userinfo["registered_characters"]:
+            profile = await GETprofileforNumber(characterNumber)
+            profiles_list.append(profile)
+
+        em = await self.attributeEmbed(user, userinfo, profiles_list, attribute)
+        await self.bot.send_message(channel, "", embed=em)
+
+
+#--------------------Embed functions--------------------
+
     async def lastPostsEmbed(self, user, userinfo, profiles_list):
         namesBody = []
         displayNames = []
@@ -414,7 +408,7 @@ class buckycog:
         total = 0
         output = "error lol"
         for characterNumber in userinfo["registered_characters"]:
-         #   threadLink = await GETlastpostThreadLink(characterNumber)
+        #   threadLink = await GETlastpostThreadLink(characterNumber)
             dateObject = await GETlastpostTime(characterNumber)
             if dateObject == "Never":
                 lastPostsBody.append(dateObject)
@@ -442,25 +436,6 @@ class buckycog:
 
         return em
 
-    @buckycog.command(name='attribute', pass_context=True, no_pm=True)
-    async def genericEmbed(self, ctx, attribute: str, user: discord.Member=None):
-        """Displays an embed showing a given attribute for a given user's registered characters"""
-        if user == None:
-            user = ctx.message.author
-        await self._create_user(user)
-        userinfo = db.users.find_one({'user_id': user.id})
-        await self.bot.send_typing(ctx.message.channel)
-        channel = ctx.message.channel
-        attributes_list = []
-        profiles_list = []
-
-        for characterNumber in userinfo["registered_characters"]:
-            profile = await GETprofileforNumber(characterNumber)
-            profiles_list.append(profile)
-
-        em = await self.attributeEmbed(user, userinfo, profiles_list, attribute)
-        await self.bot.send_message(channel, "", embed=em)
-
     async def attributeEmbed(self, user, userinfo, profiles_list, attribute):
         attributeList = []
         namesList = []
@@ -486,6 +461,32 @@ class buckycog:
 
         return output
 
+    async def profileEmbed(self, user, userinfo):
+        def test_empty(text):
+            if text == '':
+                return "None"
+            else:
+                return text
+        avatarURL = user.avatar_url
+        isActive = userinfo["active"]
+        role = userinfo["role"]
+        total_posts = userinfo["total_posts"]
+        displayNames = userinfo["character_names"]
+
+        em = discord.Embed(description=str(
+            ', '.join(displayNames)), colour=user.colour)
+        em.add_field(name="Characters:", value=len(
+            userinfo["registered_characters"]))
+        em.add_field(name="Total Posts:", value=total_posts)
+        em.add_field(name="Active:", value=isActive)
+        em.add_field(name="Role:", value=role)
+        em.set_author(name="Profile for {}".format(user.name), url=avatarURL)
+        em.set_thumbnail(url=avatarURL)
+        return em
+
+
+#--------------------Other functions--------------------
+
 
 async def update(self, ctx, user):
     await self._create_user(user)
@@ -509,10 +510,10 @@ async def updateRole(user):
 
     db.users.update_one({'user_id': user.id}, {'$set': {"active": isActive, }})
 
-    if isActive == True:
+    if isActive is True:
         db.users.update_one({'user_id': user.id}, {
                             '$set': {"role": "Members", }})
-    elif isActive == False:
+    elif isActive is False:
         for characterNumber in userinfo["registered_characters"]:
             try:
                 characterNumber = int(characterNumber)
@@ -522,13 +523,13 @@ async def updateRole(user):
                                 '$set': {"role": "Members (Inactive)", }})
             return
 
+
 async def setRole(self, user, server):
     userinfo = db.users.find_one({'user_id': user.id})
     userRoles = user.roles
     members = discord.utils.get(server.roles, name="Members")
     inactive = discord.utils.get(server.roles, name="Members (Inactive)")
     guests = discord.utils.get(server.roles, name="Guests")
-
 
     if userinfo["role"] == "Members":
         await self.bot.remove_roles(user, inactive, guests)
@@ -541,16 +542,30 @@ async def setRole(self, user, server):
         await self.bot.add_roles(user, guests)
 
 
-
 async def checkActive(user):
     lastpost = await GETusersLastPostAgo(user)
     activeTime = datetime.timedelta(days=-30)
-    if lastpost == None:
+    if lastpost is None:
         return False
-    elif (lastpost < activeTime) == False:
+    elif (lastpost < activeTime) is False:
         return True
     else:
         return False
+
+
+async def searchOwner(characterNumber, server):
+    for user in server.members:
+        userinfo = db.users.find_one({'user_id': user.id})
+        try:
+            for ownedCharacter in userinfo["registered_characters"]:
+                if ownedCharacter == characterNumber:
+                    return user.name
+        except:
+            pass
+    else:
+        return None
+
+#----------------GET functions-----------------
 
 
 async def GETdisplayNamesforUser(user):
@@ -591,19 +606,6 @@ async def GETusersLastPostAgo(user):
     else:
         return None
 
-async def searchOwner(characterNumber, server):
-    for user in server.members:
-        userinfo = db.users.find_one({'user_id': user.id})
-        try:
-            for ownedCharacter in userinfo["registered_characters"]:
-                    if ownedCharacter == characterNumber:
-                        return user.name
-        except:
-            pass
-    else:
-        return None
-
-
 
 async def GETprofileforNumber(characterNumber):
     recentURL = "http://thefantasysandbox.boards.net/user/" + \
@@ -639,7 +641,7 @@ async def GETattributeForProfile(profile, attribute):
 
 
 def GETdisplayName(profile):
-    if profile == None:
+    if profile is None:
         return "Error obtaining display_name"
     else:
         return profile.a.contents[0]
@@ -662,7 +664,7 @@ def GETregisterDate(profile):
 def GETcolor(profile):
     allegiance = GETcustomAttribute(profile, "allegiances")
     for key, val in factions.items():
-        if re.search(key, allegiance, re.IGNORECASE) != None:
+        if re.search(key, allegiance, re.IGNORECASE) is not None:
             return val
     return 0x36393F  # gray
 
@@ -680,7 +682,7 @@ def GETusername(profile):
 
 
 def GETposts(profile):
-    if profile == None:
+    if profile is None:
         return "0"
     else:
         return profile.find(class_="info").contents[0].split(" ")[2]
@@ -689,7 +691,7 @@ def GETposts(profile):
 def GETgender(profile):
     contentList = []
     gender = ""
-    if profile == None:
+    if profile is None:
         return "Unknown"
     for child in profile.children:
         contentList.append(child)
@@ -719,15 +721,15 @@ def GETgenderSymbol(profile):
 def GETcustomAttribute(profile, attribute):
     className = "custom-field-" + attribute
     attributeList = []
-    if profile.find(class_=className) == None:
+    if profile.find(class_=className) is None:
         return ""
     else:
         for string in profile.find(class_=className).stripped_strings:
-            if re.search('[a-zA-Z0-9]', string) != None:
+            if re.search('[a-zA-Z0-9]', string) is not None:
                 attributeList.append(repr(string).strip("'"))
         attributeName = attributeList[0].partition(":")[0]
         attributeContent = attributeList[0].partition(":")[2]
-        if re.search('[a-zA-Z0-9]', attributeContent) == None:
+        if re.search('[a-zA-Z0-9]', attributeContent) is None:
             attributeContent = attributeList.pop(1)
         attributeContinued = "\n".join(attributeList[1:])
         return str("**" + attributeName + ":** " + attributeContent + "\n" + attributeContinued + "\n")
