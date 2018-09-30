@@ -68,6 +68,160 @@ factions = {
     "airli": 0x19477E,
 }
 
+def Remove(duplicate): 
+    final_list = [] 
+    for num in duplicate: 
+        if num not in final_list: 
+            final_list.append(num) 
+    return final_list 
+
+#--------------------Embed functions--------------------
+
+async def characterEmbed(server, ctx, characterNumber: str):
+    soupObject = await GETrecentfromNumber(characterNumber)
+    profile = soupObject.find(class_="mini-profile")
+
+    if profile is None:
+        return("It seems like that character doesn't exist, has been deleted, or hasn't made any posts.\nWhatever the case may be, I can't find their profile. ¯\\_(ツ)_/¯")
+    else:
+        stripped_strings = []
+        profileURL = "http://thefantasysandbox.boards.net/user/" + \
+            str(characterNumber)
+        owner = await searchOwner(characterNumber, server)
+
+        for child in profile.stripped_strings:
+            stripped_strings.append(child)
+
+        em = discord.Embed(title=GETusername(profile) + " (" + str(characterNumber) + ")",
+                           description=CONSTRUCTinfo(profile), colour=GETcolor(profile), url=profileURL)
+        em.set_author(name=GETdisplayName(profile),
+                      icon_url=GETgenderSymbol(profile))
+        em.set_thumbnail(url=GETavatar(profile))
+        em.add_field(name="Post Count:", value=GETposts(profile))
+        em.add_field(name="Registered On:",
+                     value=GETregisterDate(profile))
+        em.set_footer(text=GETrank(stripped_strings),
+                      icon_url=GETstar(profile))
+        if owner is not None:
+            em.add_field(name="Owner:",
+                         value=owner)
+        return em
+
+async def characterPostsEmbed(user, userinfo, profiles_list):
+    namesBody = []
+    displayNames = []
+    postsBody = []
+    total = 0
+    output = "error lol"
+    for profile in profiles_list:
+        namesBody.append(GETdisplayName(profile))
+        posts = (GETposts(profile))
+        postsBody.append(posts)
+
+    for posts in postsBody:
+        total += (float(re.sub("[^0-9]+", "", (posts))))
+
+    postsBody = ' '.join(postsBody).split()
+
+    postsBody.append("__**" + str(int(total)) + "**__")
+    namesBody.append("__**Total:**__")
+
+    namesBody = "\n".join(namesBody)
+    postsBody = "\n".join(postsBody)
+
+    em = discord.Embed(description=str(
+        ', '.join(displayNames)), colour=user.colour)
+    em.add_field(name="Characters:", value=namesBody)
+    em.add_field(name="Posts:", value=postsBody)
+    em.set_author(name="Posts Overview for {}".format(
+        user.name), url=user.avatar_url)
+    em.set_thumbnail(url=user.avatar_url)
+
+    return em
+
+async def lastPostsEmbed(user, userinfo, profiles_list):
+    namesBody = []
+    displayNames = []
+    lastPostsBody = []
+    total = 0
+    output = "error lol"
+    for characterNumber in userinfo["registered_characters"]:
+        #   threadLink = await GETlastpostThreadLink(characterNumber)
+        dateObject = await GETlastpostTime(characterNumber)
+        if dateObject == "Never":
+            lastPostsBody.append(dateObject)
+        else:
+            formattedTime = dateObject.strftime(
+                "%a, %b, %d, %Y at %I:%M %p")
+            now = datetime.datetime.now()
+            timeDiff = dateObject - now
+            fancyTime = format_timedelta(timeDiff, locale='en_US') + " ago"
+            lastPostsBody.append(fancyTime)
+
+    for profile in profiles_list:
+        namesBody.append(GETdisplayName(profile))
+
+    namesBody = "\n".join(namesBody)
+    lastPostsBody = "\n".join(lastPostsBody)
+
+    em = discord.Embed(description=str(
+        ', '.join(displayNames)), colour=user.colour)
+    em.add_field(name="Characters:", value=namesBody)
+    em.add_field(name="Last Post:", value=lastPostsBody)
+    em.set_author(name="Last Posts Overview for {}".format(
+        user.name), url=user.avatar_url)
+    em.set_thumbnail(url=user.avatar_url)
+
+    return em
+
+async def attributeEmbed(user, userinfo, profiles_list, attribute):
+    attributeList = []
+    namesList = []
+
+    for profile in profiles_list:
+        namesList.append(GETdisplayName(profile))
+        attributeString = await GETattributeForProfile(profile, attribute)
+        attributeList.append(attributeString)
+
+    attributeList = ' '.join(attributeList).split()
+
+    namesBody = "\n".join(namesList)
+    attributeBody = "\n".join(attributeList)
+
+    em = discord.Embed(description="", colour=user.colour)
+    em.add_field(name="Character:", value=namesBody)
+    em.add_field(name="attribute:", value=attributeBody)
+    em.set_author(name=str(attribute) + " Overview for {}".format(
+        user.name), url=user.avatar_url)
+    em.set_thumbnail(url=user.avatar_url)
+
+    output = em
+
+    return output
+
+async def profileEmbed(user, userinfo):
+    def test_empty(text):
+        if text == '':
+            return "None"
+        else:
+            return text
+    avatarURL = user.avatar_url
+    isActive = userinfo["active"]
+    role = userinfo["role"]
+    total_posts = userinfo["total_posts"]
+    displayNames = userinfo["character_names"]
+
+    em = discord.Embed(description=str(
+        ', '.join(displayNames)), colour=user.colour)
+    em.add_field(name="Characters:", value=len(
+        userinfo["registered_characters"]))
+    em.add_field(name="Total Posts:", value=total_posts)
+    em.add_field(name="Active:", value=isActive)
+    em.add_field(name="Role:", value=role)
+    em.set_author(name="Profile for {}".format(user.name), url=avatarURL)
+    em.set_thumbnail(url=avatarURL)
+    return em
+
 
 class buckycog:
     """TFS utilities"""
@@ -99,79 +253,9 @@ class buckycog:
         if ctx.invoked_subcommand is None:
             await self.bot.send_cmd_help(ctx)
 
-    @buckycog.command(name='char', alias="character", pass_context=True)
-    async def character(self, ctx, characterNumber: str):
-        """Fetches and displays a given character's profile"""
-
-        server = ctx.message.server
-        soupObject = await GETrecentfromNumber(characterNumber)
-        profile = soupObject.find(class_="mini-profile")
-
-        if profile is None:
-            await self.bot.say("It seems like that character doesn't exist, has been deleted, or hasn't made any posts.\nWhatever the case may be, I can't find their profile. ¯\\_(ツ)_/¯")
-        else:
-            stripped_strings = []
-            profileURL = "http://thefantasysandbox.boards.net/user/" + \
-                str(characterNumber)
-            owner = await searchOwner(characterNumber, server)
-
-            for child in profile.stripped_strings:
-                stripped_strings.append(child)
-
-            em = discord.Embed(title=GETusername(profile) + " (" + characterNumber + ")",
-                               description=CONSTRUCTinfo(profile), colour=GETcolor(profile), url=profileURL)
-            em.set_author(name=GETdisplayName(profile),
-                          icon_url=GETgenderSymbol(profile))
-            em.set_thumbnail(url=GETavatar(profile))
-            em.add_field(name="Post Count:", value=GETposts(profile))
-            em.add_field(name="Registered On:",
-                         value=GETregisterDate(profile))
-            em.set_footer(text=GETrank(stripped_strings),
-                          icon_url=GETstar(profile))
-            if owner is not None:
-                em.add_field(name="Owner:",
-                             value=owner)
-            await self.bot.say(embed=em)  # then it says the embed
-
-    @buckycog.command(name='lastpost', aliases=["lp"])
-    async def lastpost(self, ctx):
-        """Fetches and displays a given character's last post"""
-        characterNumber = ctx
-        dateObject = await GETlastpostTime(characterNumber)
-        profile = await GETprofileforNumber(characterNumber)
-        name = GETdisplayName(profile)
-        thread = await GETlastpostThread(characterNumber)
-        threadLink = await GETlastpostThreadLink(characterNumber)
-        postContent = await GETlastpostContent(characterNumber)
-        formattedTime = dateObject.strftime("%a, %b, %d, %Y at %I:%M %p")
-        now = datetime.datetime.now()
-        timeDiff = dateObject - now
-        fancyTime = format_timedelta(timeDiff, locale='en_US')
-        em = discord.Embed(title="in " + thread, description=postContent,
-                           colour=GETcolor(profile), url=threadLink)
-        em.set_author(name=name + "'s last post was " + fancyTime + " ago",
-                      icon_url=GETavatar(profile))
-        em.set_footer(text=formattedTime)
-
-        await self.bot.say(embed=em)
-
-    @buckycog.command(name='test', pass_context=True, no_pm=True, hidden=True)
-    async def test(self, ctx, *, user: discord.Member=None):
-        if user is None:
-            user = ctx.message.author
-        await updateRole(user)
-        userinfo = db.users.find_one({'user_id': user.id})
-        muhString = "Updated role and active status for: " + user.name
-        isActive = userinfo["active"]
-        role = userinfo["role"]
-        muhString2 = str(isActive) + "\n" + role
-
-        await self.bot.say(muhString)
-        await self.bot.say(muhString2)
-
     @checks.is_owner()
-    @buckycog.command(name='updateall', pass_context=True, no_pm=True)
-    async def updateall(self, ctx):
+    @buckycog.command(name='update_all', pass_context=True, no_pm=True)
+    async def update_all(self, ctx):
         """Updates every user on the server"""
         server = ctx.message.server
         members = server.members
@@ -180,7 +264,7 @@ class buckycog:
             await update(self, ctx, member)
         await self.bot.say("I've finished updating information for all users. _Wew._")
 
-    @buckycog.command(name='update', pass_context=True, no_pm=True, alias="register")
+    @buckycog.command(name='update', pass_context=True, no_pm=True)
     async def update(self, ctx, *, user: discord.Member=None):
         """Updates database information and role for a given user"""
         if user is None:
@@ -224,7 +308,66 @@ class buckycog:
         except AttributeError as e:
             pass
 
-    @buckycog.command(name="profile", pass_context=True, no_pm=True)
+    @commands.group(pass_context=True, name='character', aliases=["char"], case_insensitive=True)
+    async def character(self, ctx):
+        try:
+            characterNumber = int(ctx.subcommand_passed)
+            server = ctx.message.server
+            channel = ctx.message.channel
+            em = await characterEmbed(server, ctx, characterNumber)
+            await self.bot.send_message(channel, "", embed=em)
+        except:
+            if ctx.invoked_subcommand is None:
+                await self.bot.send_cmd_help(ctx)
+
+    @character.command(name='lastpost', aliases=["lp"])
+    async def lastpost(self, ctx):
+        """Fetches and displays a given character's last post"""
+        characterNumber = ctx
+        dateObject = await GETlastpostTime(characterNumber)
+        profile = await GETprofileforNumber(characterNumber)
+        name = GETdisplayName(profile)
+        thread = await GETlastpostThread(characterNumber)
+        threadLink = await GETlastpostThreadLink(characterNumber)
+        postContent = await GETlastpostContent(characterNumber)
+        formattedTime = dateObject.strftime("%a, %b, %d, %Y at %I:%M %p")
+        now = datetime.datetime.now()
+        timeDiff = dateObject - now
+        fancyTime = format_timedelta(timeDiff, locale='en_US')
+        em = discord.Embed(title="in " + thread, description=postContent,
+                           colour=GETcolor(profile), url=threadLink)
+        em.set_author(name=name + "'s last post was " + fancyTime + " ago",
+                      icon_url=GETavatar(profile))
+        em.set_footer(text=formattedTime)
+
+        await self.bot.say(embed=em)
+
+    #@character.command(name='claim', aliases=["lp"])
+    @character.command(name="claim", pass_context=True, no_pm=True)
+    async def claim(self, ctx, *, arg):
+        """Adds a character to user's registered users"""
+
+        user = ctx.message.author
+        await self._create_user(user)
+        userinfo = db.users.find_one({'user_id': user.id})
+        numbers = list(filter(None, re.sub("[^0-9]+", ",", (arg)).split(",")))
+        characters = userinfo["registered_characters"]
+        new = Remove(characters + numbers)
+        new.sort()
+
+        db.users.update_one({'user_id': user.id}, {'$set': {
+            "registered_characters": new,
+        }})
+        await self.bot.say("Success." + ('There are now {} characters registered to you. {}\n Use `n!tfs update` to update your profile.'.format(len(numbers), ', '.join(numbers))))
+
+    #@character.command(name='assign', aliases=["lp"])
+#-------------------User commands-----------------------
+    @commands.group(pass_context=True, case_insensitive=True)
+    async def user(self, ctx):
+        if ctx.invoked_subcommand is None:
+            await self.bot.send_cmd_help(ctx)
+
+    @user.command(name="profile", pass_context=True, no_pm=True)
     async def profile(self, ctx, *, user: discord.Member=None):
         """Displays a given user's profile"""
         if user is None:
@@ -233,10 +376,10 @@ class buckycog:
         userinfo = db.users.find_one({'user_id': user.id})
         await self.bot.send_typing(ctx.message.channel)
 
-        em = await self.profileEmbed(user, userinfo)
+        em = await profileEmbed(user, userinfo)
         await self.bot.say(embed=em)
 
-    @buckycog.command(name="registerchars", pass_context=True, no_pm=True)
+    @user.command(name="registerchars", pass_context=True, no_pm=True)
     async def registerchars(self, ctx, *, arg):
         """Registers characters to the command's user. Character numbers should be seperated by spaces."""
         user = ctx.message.author
@@ -250,7 +393,7 @@ class buckycog:
         await self.bot.say("Registered " + ('{} Characters: {} Use `n!tfs update` to update your profile.'.format(len(numbers), ', '.join(numbers))))
 
     @checks.admin_or_permissions(manage_roles=True)
-    @buckycog.command(name="assignchars", pass_context=True, no_pm=True)
+    @user.command(name="assignchars", pass_context=True, no_pm=True)
     async def assignchars(self, ctx, user: discord.Member=None, *, arg):
         """Assigns characters to a user. Character numbers should be seperated by spaces."""
         if user is None:
@@ -264,15 +407,7 @@ class buckycog:
         }})
         await self.bot.say("Registered " + ('{} Characters to {}: {}'.format(len(numbers), user.name, ', '.join(numbers))))
 
-    @buckycog.command(name="trim", pass_context=True, no_pm=True)
-    async def trim(self, *args):
-        outputList = []
-        for arg in args:
-            outputList.append(
-                float(re.sub("[^0-9]+", "", (arg))))
-        await self.bot.say(str(outputList))
-
-    @buckycog.command(name="display_characters", pass_context=True, no_pm=True)
+    @user.command(name="display_characters", pass_context=True, no_pm=True)
     async def display_characters(self, ctx, *, user: discord.Member=None):
         """Display names and character numbers of a given user"""
         if user is None:
@@ -290,7 +425,7 @@ class buckycog:
         await self.bot.say(characterNumbers)
         await self.bot.say(str(' '.join(displayNames)))
 
-    @buckycog.command(name="totalposts", pass_context=True, no_pm=True)
+    @user.command(name="totalposts", pass_context=True, no_pm=True)
     async def display_total_posts(self, ctx, *, user: discord.Member=None):
         """Total number of posts across a given user's registered characters"""
         if user is None:
@@ -309,7 +444,7 @@ class buckycog:
         total_posts = int(sum(posts_list))
         await self.bot.say(total_posts)
 
-    @buckycog.command(name='posts', pass_context=True, no_pm=True)
+    @user.command(name='posts', pass_context=True, no_pm=True)
     async def posts(self, ctx, *, user: discord.Member=None):
         """A posts overview for a given user"""
         if user is None:
@@ -325,42 +460,10 @@ class buckycog:
             profile = await GETprofileforNumber(characterNumber)
             profiles_list.append(profile)
 
-        em = await self.characterPostsEmbed(user, userinfo, profiles_list)
+        em = await characterPostsEmbed(user, userinfo, profiles_list)
         await self.bot.send_message(channel, "", embed=em)
 
-    async def characterPostsEmbed(self, user, userinfo, profiles_list):
-        namesBody = []
-        displayNames = []
-        postsBody = []
-        total = 0
-        output = "error lol"
-        for profile in profiles_list:
-            namesBody.append(GETdisplayName(profile))
-            posts = (GETposts(profile))
-            postsBody.append(posts)
-
-        for posts in postsBody:
-            total += (float(re.sub("[^0-9]+", "", (posts))))
-
-        postsBody = ' '.join(postsBody).split()
-
-        postsBody.append("__**" + str(int(total)) + "**__")
-        namesBody.append("__**Total:**__")
-
-        namesBody = "\n".join(namesBody)
-        postsBody = "\n".join(postsBody)
-
-        em = discord.Embed(description=str(
-            ', '.join(displayNames)), colour=user.colour)
-        em.add_field(name="Characters:", value=namesBody)
-        em.add_field(name="Posts:", value=postsBody)
-        em.set_author(name="Posts Overview for {}".format(
-            user.name), url=user.avatar_url)
-        em.set_thumbnail(url=user.avatar_url)
-
-        return em
-
-    @buckycog.command(name='lastposts', pass_context=True, no_pm=True)
+    @user.command(name='lastposts', pass_context=True, no_pm=True)
     async def lastPosts(self, ctx, *, user: discord.Member=None):
         """Displays an embed showing the last posts for a given user's registered characters"""
         if user is None:
@@ -376,10 +479,10 @@ class buckycog:
             profile = await GETprofileforNumber(characterNumber)
             profiles_list.append(profile)
 
-        em = await self.lastPostsEmbed(user, userinfo, profiles_list)
+        em = await lastPostsEmbed(user, userinfo, profiles_list)
         await self.bot.send_message(channel, "", embed=em)
 
-    @buckycog.command(name='attribute', pass_context=True, no_pm=True)
+    @user.command(name='attribute', pass_context=True, no_pm=True)
     async def attribute(self, ctx, attribute: str, user: discord.Member=None):
         """Displays an embed showing a given attribute for a given user's registered characters"""
         if user is None:
@@ -395,94 +498,11 @@ class buckycog:
             profile = await GETprofileforNumber(characterNumber)
             profiles_list.append(profile)
 
-        em = await self.attributeEmbed(user, userinfo, profiles_list, attribute)
+        em = await attributeEmbed(user, userinfo, profiles_list, attribute)
         await self.bot.send_message(channel, "", embed=em)
 
 
-#--------------------Embed functions--------------------
 
-    async def lastPostsEmbed(self, user, userinfo, profiles_list):
-        namesBody = []
-        displayNames = []
-        lastPostsBody = []
-        total = 0
-        output = "error lol"
-        for characterNumber in userinfo["registered_characters"]:
-        #   threadLink = await GETlastpostThreadLink(characterNumber)
-            dateObject = await GETlastpostTime(characterNumber)
-            if dateObject == "Never":
-                lastPostsBody.append(dateObject)
-            else:
-                formattedTime = dateObject.strftime(
-                    "%a, %b, %d, %Y at %I:%M %p")
-                now = datetime.datetime.now()
-                timeDiff = dateObject - now
-                fancyTime = format_timedelta(timeDiff, locale='en_US') + " ago"
-                lastPostsBody.append(fancyTime)
-
-        for profile in profiles_list:
-            namesBody.append(GETdisplayName(profile))
-
-        namesBody = "\n".join(namesBody)
-        lastPostsBody = "\n".join(lastPostsBody)
-
-        em = discord.Embed(description=str(
-            ', '.join(displayNames)), colour=user.colour)
-        em.add_field(name="Characters:", value=namesBody)
-        em.add_field(name="Last Post:", value=lastPostsBody)
-        em.set_author(name="Last Posts Overview for {}".format(
-            user.name), url=user.avatar_url)
-        em.set_thumbnail(url=user.avatar_url)
-
-        return em
-
-    async def attributeEmbed(self, user, userinfo, profiles_list, attribute):
-        attributeList = []
-        namesList = []
-
-        for profile in profiles_list:
-            namesList.append(GETdisplayName(profile))
-            attributeString = await GETattributeForProfile(profile, attribute)
-            attributeList.append(attributeString)
-
-        attributeList = ' '.join(attributeList).split()
-
-        namesBody = "\n".join(namesList)
-        attributeBody = "\n".join(attributeList)
-
-        em = discord.Embed(description="", colour=user.colour)
-        em.add_field(name="Character:", value=namesBody)
-        em.add_field(name="attribute:", value=attributeBody)
-        em.set_author(name=str(attribute) + " Overview for {}".format(
-            user.name), url=user.avatar_url)
-        em.set_thumbnail(url=user.avatar_url)
-
-        output = em
-
-        return output
-
-    async def profileEmbed(self, user, userinfo):
-        def test_empty(text):
-            if text == '':
-                return "None"
-            else:
-                return text
-        avatarURL = user.avatar_url
-        isActive = userinfo["active"]
-        role = userinfo["role"]
-        total_posts = userinfo["total_posts"]
-        displayNames = userinfo["character_names"]
-
-        em = discord.Embed(description=str(
-            ', '.join(displayNames)), colour=user.colour)
-        em.add_field(name="Characters:", value=len(
-            userinfo["registered_characters"]))
-        em.add_field(name="Total Posts:", value=total_posts)
-        em.add_field(name="Active:", value=isActive)
-        em.add_field(name="Role:", value=role)
-        em.set_author(name="Profile for {}".format(user.name), url=avatarURL)
-        em.set_thumbnail(url=avatarURL)
-        return em
 
 
 #--------------------Other functions--------------------
