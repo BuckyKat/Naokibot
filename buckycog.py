@@ -68,14 +68,16 @@ factions = {
     "airli": 0x19477E,
 }
 
-def Remove(duplicate): 
-    final_list = [] 
-    for num in duplicate: 
-        if num not in final_list: 
-            final_list.append(num) 
-    return final_list 
+
+def Remove(duplicate):
+    final_list = []
+    for num in duplicate:
+        if num not in final_list:
+            final_list.append(num)
+    return final_list
 
 #--------------------Embed functions--------------------
+
 
 async def characterEmbed(server, ctx, characterNumber: str):
     soupObject = await GETrecentfromNumber(characterNumber)
@@ -106,6 +108,7 @@ async def characterEmbed(server, ctx, characterNumber: str):
             em.add_field(name="Owner:",
                          value=owner)
         return em
+
 
 async def characterPostsEmbed(user, userinfo, profiles_list):
     namesBody = []
@@ -138,6 +141,7 @@ async def characterPostsEmbed(user, userinfo, profiles_list):
     em.set_thumbnail(url=user.avatar_url)
 
     return em
+
 
 async def lastPostsEmbed(user, userinfo, profiles_list):
     namesBody = []
@@ -174,6 +178,7 @@ async def lastPostsEmbed(user, userinfo, profiles_list):
 
     return em
 
+
 async def attributeEmbed(user, userinfo, profiles_list, attribute):
     attributeList = []
     namesList = []
@@ -198,6 +203,7 @@ async def attributeEmbed(user, userinfo, profiles_list, attribute):
     output = em
 
     return output
+
 
 async def profileEmbed(user, userinfo):
     def test_empty(text):
@@ -342,7 +348,6 @@ class buckycog:
 
         await self.bot.say(embed=em)
 
-    #@character.command(name='claim', aliases=["lp"])
     @character.command(name="claim", pass_context=True, no_pm=True)
     async def claim(self, ctx, *, arg):
         """Adds a character to user's registered users"""
@@ -358,7 +363,7 @@ class buckycog:
         db.users.update_one({'user_id': user.id}, {'$set': {
             "registered_characters": new,
         }})
-        await self.bot.say("Success." + ('There are now {} characters registered to you. {}\n Use `n!tfs update` to update your profile.'.format(len(numbers), ', '.join(numbers))))
+        await self.bot.say("Success. " + ('There are now {} characters registered to you. {}\n Use `n!tfs update` to update your profile.'.format(len(new), ', '.join(new))))
 
     #@character.command(name='assign', aliases=["lp"])
 #-------------------User commands-----------------------
@@ -500,9 +505,6 @@ class buckycog:
 
         em = await attributeEmbed(user, userinfo, profiles_list, attribute)
         await self.bot.send_message(channel, "", embed=em)
-
-
-
 
 
 #--------------------Other functions--------------------
