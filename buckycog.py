@@ -271,7 +271,7 @@ class buckycog:
         await self.bot.say("I've finished updating information for all users. _Wew._")
 
     @buckycog.command(name='update', pass_context=True, no_pm=True)
-    async def update(self, ctx, *, user: discord.Member=None):
+    async def updateUser(self, ctx, *, user: discord.Member=None):
         """Updates database information and role for a given user"""
         if user is None:
             user = ctx.message.author
