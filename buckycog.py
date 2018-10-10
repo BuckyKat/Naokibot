@@ -89,7 +89,7 @@ async def characterEmbed(server, ctx, characterNumber: str):
         stripped_strings = []
         profileURL = "http://thefantasysandbox.boards.net/user/" + \
             str(characterNumber)
-        owner = await searchOwner(characterNumber, server)
+        owner = await searchOwner(int(characterNumber), server)
 
         for child in profile.stripped_strings:
             stripped_strings.append(child)
@@ -229,6 +229,42 @@ async def profileEmbed(user, userinfo):
     return em
 
 
+async def databaseCharacterEmbed(characterinfo):
+    if characterinfo["deleted"] is True:
+        return discord.Embed(description="Deleted character")
+    else:
+        number = characterinfo["character_id"]
+        username = characterinfo["username"]
+        display_name = characterinfo["display_name"]
+        deleted = characterinfo["deleted"]
+        register_date = characterinfo["register_date"]
+        post_count = characterinfo["post_count"]
+        color = characterinfo["color"]
+        avatar_url = characterinfo["avatar_url"]
+        gender = characterinfo["gender"]
+        rank = characterinfo["rank"]
+        last_post = characterinfo["last_post"]
+        active = characterinfo["active"]
+        allegiances = characterinfo["allegiances"]
+
+        em = discord.Embed(description="")
+        em.add_field(name="number", value=number)
+        em.add_field(name="username", value=username)
+        em.add_field(name="display_name", value=display_name)
+        em.add_field(name="deleted", value=deleted)
+        em.add_field(name="register_date", value=str(register_date))
+        em.add_field(name="post_count", value=str(post_count))
+        em.add_field(name="color", value=color)
+        em.add_field(name="avatar_url", value=avatar_url)
+        em.add_field(name="gender", value=gender)
+        em.add_field(name="rank", value=rank)
+        em.add_field(name="last_post", value=last_post)
+        em.add_field(name="active", value=str(active))
+        em.add_field(name="allegiances", value=allegiances)
+        em.set_author(name="Database Profile for {}".format(display_name))
+        return em
+
+
 class buckycog:
     """TFS utilities"""
 
@@ -288,7 +324,7 @@ class buckycog:
         await GETdisplayNamesforUser(user)
         server = ctx.message.server
         await setRole(self, user, server)
-        await self.bot.say("Finished updating information for " + user.name + ". Check with `n!tfs profile`")
+        await self.bot.say("Finished updating information for " + user.name + ". Check with `n!user profile`")
 
     async def _create_user(self, user):
         try:
@@ -314,6 +350,115 @@ class buckycog:
         except AttributeError as e:
             pass
 
+    @commands.group(pass_context=True, name='database', aliases=["db"], case_insensitive=True)
+    async def database(self, ctx):
+        if ctx.invoked_subcommand is None:
+            await self.bot.send_cmd_help(ctx)
+
+    @checks.is_owner()
+    @database.command(name="update", pass_context=True)
+    async def updateDatabse(self, ctx, arg1, arg2):
+        try:
+            characterRange = range(int(arg1), (int(arg2) + 1))
+            await self.bot.say(characterRange)
+        except:
+            await self.bot.say("Something went wrong constructing the range, it's gotta be two integers.")
+            return
+        for characterNumber in characterRange:
+            characterinfo = db.characters.find_one(
+                {'character_id': characterNumber})
+            if characterinfo is None:
+                await self._create_character(characterNumber)
+                characterinfo = db.characters.find_one(
+                    {'character_id': characterNumber})
+                if characterinfo["deleted"] is False:
+                    await self.bot.say("Created database entry for {}({})".format(characterinfo["display_name"], characterNumber))
+            elif characterinfo["deleted"] is True:
+                await self.bot.say("Character {} seems to be deleted.".format(characterinfo["character_id"]))
+            else:
+                update = await assembleCharacterEntry(characterNumber)
+                db.characters.update_one(
+                    {'character_id': characterNumber}, {"$set": update})
+                try:
+                    await self.bot.say("Updated database entry for {}({})".format(update["display_name"], characterNumber))
+                except:
+                    await self.bot.say("Updated database entry for character {}.".format(characterNumber))
+
+    @checks.is_owner()
+    @database.command(name="build", pass_context=True)
+    async def buildDatabse(self, ctx, arg1, arg2):
+        try:
+            characterRange = range(int(arg1), (int(arg2) + 1))
+            await self.bot.say(characterRange)
+        except:
+            await self.bot.say("Something went wrong constructing the range, it's gotta be two integers.")
+            return
+        for characterNumber in characterRange:
+            #    try:
+            characterinfo = db.characters.find_one(
+                {'character_id': characterNumber})
+            if not characterinfo:
+                await self._create_character(characterNumber)
+                characterinfo = db.characters.find_one(
+                    {'character_id': characterNumber})
+                if characterinfo["deleted"] is True:
+                    await self.bot.say("Character {} seems to be deleted.".format(characterinfo["character_id"]))
+                elif characterinfo:
+                    await self.bot.say("Created database entry for {}({})".format(characterinfo["display_name"], characterNumber))
+          #  except:
+         #       await self.bot.say("Something went wrong trying to create a database entry for character #{}.".format(characterNumber))
+
+    async def _create_character(self, characterNumber):
+        try:
+            characterinfo = db.characters.find_one(
+                {'character_id': characterNumber})
+            if not characterinfo:
+                new_character = await assembleCharacterEntry(characterNumber)
+                db.characters.insert_one(new_character)
+        except AttributeError as e:
+            pass
+
+    @database.command(name="show", pass_context=True)
+    async def showDatabse(self, ctx, characterNumber:int):
+        channel = ctx.message.channel
+        characterinfo = db.characters.find_one(
+            {'character_id': characterNumber})
+        if characterinfo is None:
+            await self.bot.say("I can't find a databse entry for that character.")
+        else:
+            em = await databaseCharacterEmbed(characterinfo)
+            await self.bot.send_message(channel, "", embed=em)
+
+    @database.command(name="search", pass_context=True)
+    async def searchDatabse(self, ctx, field ="username", *, term:str):
+        try:
+            characterinfo = db.characters.find_one(
+                {'character_id': int(term)})
+            em = await databaseCharacterEmbed(characterinfo)
+            await self.bot.send_message(channel, "", embed=em)
+            return
+        except:
+            if term == "True":
+                term = True
+            if term == "False":
+                term = False
+            query = {field: term}
+            result = db.characters.find(query)
+
+            if result is not None:
+                for character in result:
+                    em = await databaseCharacterEmbed(character)
+                    await self.bot.send_message(ctx.message.channel, "", embed=em)
+            else:
+                await self.bot.say("I can't find a databse entry for that term.")
+
+    @checks.is_owner()
+    @database.command(name="delete_all", pass_context=True)
+    async def deleteDatabse(self, ctx):
+        db.characters.delete_many({"deleted": False})
+        db.characters.delete_many({"deleted": True})
+
+
     @commands.group(pass_context=True, name='character', aliases=["char"], case_insensitive=True)
     async def character(self, ctx):
         try:
@@ -325,6 +470,19 @@ class buckycog:
         except:
             if ctx.invoked_subcommand is None:
                 await self.bot.send_cmd_help(ctx)
+
+    @character.command(name='gender', pass_context=True,)
+    async def gender(self, ctx, characterNumber: str):
+        profile = await GETprofileforNumber(characterNumber)
+        genderOutput = GETgender(profile)
+        contentList = []
+        if profile is None:
+            await self.bot.say("Unknown, no profile")
+        else:
+            for child in profile.children:
+                contentList.append(child)
+            await self.bot.say("Content list:" + str(contentList)[0:1900])
+            await self.bot.say("Function output:" + genderOutput)
 
     @character.command(name='lastpost', aliases=["lp"])
     async def lastpost(self, ctx):
@@ -508,6 +666,42 @@ class buckycog:
 
 
 #--------------------Other functions--------------------
+async def assembleCharacterEntry(characterNumber: int):
+    profile = await GETprofileforNumber(characterNumber)
+    if profile is None:
+        character = {
+            "character_id": characterNumber,
+            "deleted": True,
+        }
+    else:
+        username = GETusername(profile),
+        display_name = GETdisplayName(profile),
+        register_date = GETregisterDate(profile),
+        post_count = GETposts(profile),
+        avatar_url = GETavatar(profile),
+        gender = GETgender(profile),
+        rank = GETrank(profile),
+        last_post = await GETlastpostTime(characterNumber),
+        active = await checkCharacterActive(characterNumber),
+        allegiances = GETallegiances(profile),
+        color = GETcolor(profile),
+        character = {
+            "character_id": characterNumber,
+            "deleted": False,
+            "username": username,
+            "display_name": display_name,
+            "register_date": register_date,
+            "post_count": post_count,
+            "avatar_url": avatar_url,
+            "gender": gender,
+            "rank": rank,
+            "last_post": last_post,
+            "active": active,
+            "allegiances": allegiances,
+            "color": color,
+            "owner": None
+        }
+    return character
 
 
 async def update(self, ctx, user):
@@ -586,6 +780,20 @@ async def searchOwner(characterNumber, server):
             pass
     else:
         return None
+
+
+async def checkCharacterActive(characterNumber):
+    lastpost = await GETlastpostTime(characterNumber)
+    if lastpost is None:
+        return False
+    else:
+        now = datetime.datetime.now()
+        timeDiff = lastpost - now
+        activeTime = datetime.timedelta(days=-30)
+        if (timeDiff < activeTime) is False:
+            return True
+        else:
+            return False
 
 #----------------GET functions-----------------
 
@@ -673,7 +881,10 @@ def GETstar(profile):
     return "https:/" + str(profile.contents[6]).partition("/")[2].rstrip('"/>')
 
 
-def GETrank(stripped_strings):
+def GETrank(profile):
+    stripped_strings = []
+    for child in profile.stripped_strings:
+        stripped_strings.append(child)
     return stripped_strings[1]
 
 
@@ -681,6 +892,15 @@ def GETregisterDate(profile):
     registerDate = profile.find(class_="o-timestamp time").string
     registerConstructor = registerDate.split(" ")
     return registerConstructor[0] + " " + registerConstructor[1] + " " + registerConstructor[2]
+
+
+def GETallegiances(profile):
+    contents = GETcustomAttribute(profile, "allegiances")
+    allegiances = []
+    for key, val in factions.items():
+        if re.search(key, contents, re.IGNORECASE) is not None:
+            allegiances.append(key)
+    return allegiances
 
 
 def GETcolor(profile):
@@ -700,14 +920,18 @@ def GETavatar(profile):
 
 
 def GETusername(profile):
-    return "@" + (str(profile.a).split("@")[1]).split('"')[0]
+    try:
+        return "@" + (str(profile.a).split("@")[1]).split('"')[0]
+    except:
+        return "@error"
 
 
 def GETposts(profile):
     if profile is None:
         return "0"
     else:
-        return profile.find(class_="info").contents[0].split(" ")[2]
+        posts = profile.find(class_="info").contents[0].split(" ")[2]
+        return re.sub("[^0-9]+", "", (posts))
 
 
 def GETgender(profile):
@@ -717,9 +941,9 @@ def GETgender(profile):
         return "Unknown"
     for child in profile.children:
         contentList.append(child)
-        if re.search("[female]{6,}", str(child)):
+        if re.search("[female]{6,}", str(child), re.IGNORECASE):
             return "Female"
-        elif re.search("[male]{4,}", str(child)):
+        elif re.search("[male]{4,}", str(child), re.IGNORECASE):
             return "Male"
     try:
         gender = (str(contentList[16]).split('"')[5])
