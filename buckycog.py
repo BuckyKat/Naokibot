@@ -79,7 +79,8 @@ def Remove(duplicate):
 #--------------------Embed functions--------------------
 
 
-async def characterEmbed(server, ctx, characterNumber: str):
+async def characterEmbed(ctx, characterNumber: str):
+    server = ctx.message.server
     soupObject = await GETrecentfromNumber(characterNumber)
     profile = soupObject.find(class_="mini-profile")
 
@@ -102,7 +103,7 @@ async def characterEmbed(server, ctx, characterNumber: str):
         em.add_field(name="Post Count:", value=GETposts(profile))
         em.add_field(name="Registered On:",
                      value=GETregisterDate(profile))
-        em.set_footer(text=GETrank(stripped_strings),
+        em.set_footer(text=GETrank(profile),
                       icon_url=GETstar(profile))
         if owner is not None:
             em.add_field(name="Owner:",
@@ -435,7 +436,7 @@ class buckycog:
             characterinfo = db.characters.find_one(
                 {'character_id': int(term)})
             em = await databaseCharacterEmbed(characterinfo)
-            await self.bot.send_message(channel, "", embed=em)
+            await self.bot.send_message(ctx.message.channel, "", embed=em)
             return
         except:
             if term == "True":
@@ -461,15 +462,36 @@ class buckycog:
 
     @commands.group(pass_context=True, name='character', aliases=["char"], case_insensitive=True)
     async def character(self, ctx):
+        channel = ctx.message.channel
         try:
-            characterNumber = int(ctx.subcommand_passed)
-            server = ctx.message.server
-            channel = ctx.message.channel
-            em = await characterEmbed(server, ctx, characterNumber)
+            characterNumber = str(ctx.subcommand_passed)
+            em = await characterEmbed(ctx, characterNumber)
             await self.bot.send_message(channel, "", embed=em)
         except:
-            if ctx.invoked_subcommand is None:
-                await self.bot.send_cmd_help(ctx)
+            try:
+                character = await characterSearch(str(ctx.subcommand_passed))
+                em = await characterEmbed(ctx, character["character_id"])
+                await self.bot.send_message(channel, "", embed=em)
+            except:
+                if ctx.invoked_subcommand is None:
+                    await self.bot.send_cmd_help(ctx)
+
+
+
+    @character.command(name='search', pass_context=True)
+    async def charSearchCommand(self, ctx, *, name:str):
+        await self.bot.send_message(ctx.message.channel, "Name: {}".format(name))
+        character = await characterSearch(name)
+        em = await characterEmbed(ctx, character["character_id"])
+        await self.bot.send_message(ctx.message.channel, "", embed=em)
+
+
+    @character.command(name='show', pass_context=True,)
+    async def show(self, ctx, characterNumber: str):
+        characterNumber = characterNumber
+        channel = ctx.message.channel
+        em = await characterEmbed(ctx, characterNumber)
+        await self.bot.send_message(channel, "", embed=em)
 
     @character.command(name='gender', pass_context=True,)
     async def gender(self, ctx, characterNumber: str):
@@ -666,6 +688,15 @@ class buckycog:
 
 
 #--------------------Other functions--------------------
+
+async def characterSearch(name: str):
+    db.characters.create_index([("display_name", pymongo.TEXT), ("username", pymongo.TEXT)])
+    cursor = db.characters.find({"$text": {"$search": name}}, {"score": {"$meta": "textScore"}})
+    cursor.sort([('score', {"$meta": "textScore"})])
+    character = cursor[0]
+    return character
+
+
 async def assembleCharacterEntry(characterNumber: int):
     profile = await GETprofileforNumber(characterNumber)
     if profile is None:
