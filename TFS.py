@@ -9,7 +9,7 @@ from redbot.core import Config
 import datetime
 from babel.dates import format_timedelta
 
-### CONSTANTS
+# CONSTANTS
 factions = {
     "isra": 0x650D1B,
     "aozora": 0x60BAF3,
@@ -39,7 +39,7 @@ factions = {
 }
 
 
-###  HELPER FUNCTIONS
+# HELPER FUNCTIONS
 async def fetch(session, url):
     async with session.get(url) as response:
         return await response.text()
@@ -84,7 +84,8 @@ class Character:
 
     @classmethod
     async def from_num(cls, num):
-        recent_url = "http://themistborneisles.boards.net/user/" + str(num) + "/recent"
+        recent_url = "http://themistborneisles.boards.net/user/" + \
+            str(num) + "/recent"
         async with aiohttp.ClientSession() as session:
             html = await fetch(session, recent_url)
             soup_object = BeautifulSoup(html, "html.parser")
@@ -94,22 +95,30 @@ class Character:
 
     @property
     def embed(self):
-        em = discord.Embed(title=self.username + " (" + str(self.number) + ")", url=self.profile_url)
+        em = discord.Embed(title=self.username +
+                           " (" + str(self.number) + ")", url=self.profile_url)
         em.set_thumbnail(url=self.avatar)
         em.set_author(name=self.display_name, icon_url=self.gender_symbol)
         em.add_field(name="Post Count:", value=self.posts, inline=True)
-        em.add_field(name="Register Date:", value=self.register_date, inline=True)
+        em.add_field(name="Register Date:",
+                     value=self.register_date, inline=True)
         if self.age != "Not set":
             em.add_field(name="Age:", value=self.age, inline=True)
         if self.physical_description != "Not set":
-            em.add_field(name="Physical Description:", value=truncate(self.physical_description), inline=False)
+            em.add_field(name="Physical Description:", value=truncate(
+                self.physical_description), inline=False)
         if self.clothes_and_equipment != "Not set":
-            em.add_field(name="Clothes and Equipment:", value=truncate(self.clothes_and_equipment), inline=False)
+            em.add_field(name="Clothes and Equipment:", value=truncate(
+                self.clothes_and_equipment), inline=False)
         if self.skills_and_abilities != "Not set":
-            em.add_field(name="Skills and abilities:", value=truncate(self.skills_and_abilities), inline=False)
+            em.add_field(name="Skills and abilities:", value=truncate(
+                self.skills_and_abilities), inline=False)
         if self.personality_other != "Not set":
-            em.add_field(name="Personality, other:", value=truncate(self.personality_other), inline=False)
-        footer = self.rank + "  |  " + active_fancy(self.active) + "  |  " + "Last post: " + self.last_post_time_fancy
+            em.add_field(name="Personality, other:", value=truncate(
+                self.personality_other), inline=False)
+        footer = self.rank + "  |  " + \
+            active_fancy(self.active) + "  |  " + \
+            "Last post: " + self.last_post_time_fancy
         em.set_footer(text=footer, icon_url=self.star)
         em.color = self.color
         return em
@@ -445,6 +454,7 @@ class TFS(commands.Cog):
         for num in numbers:
             try:
                 await self.profiles.remove_character(ctx.author, int(num))
+                await ctx.send(":white_check_mark: Success. Character #" + num + " has been removed from your profile.")
             except ValueError:
                 await ctx.send(
                     "Error: character # " + num + " cannot be unclaimed because they were not claimed to begin with.")
@@ -462,8 +472,6 @@ class TFS(commands.Cog):
         main = await self.profiles.get_main(user)
         posts = await self.profiles.get_posts(user)
 
-        
-
         em = discord.Embed(title=user.nick)
         em.set_thumbnail(url=user.avatar_url)
         em.set_author(name=user.name)
@@ -471,7 +479,8 @@ class TFS(commands.Cog):
         em.add_field(name="Post Count:", value=posts, inline=True)
         em.add_field(name="Register Date:", value=user.created_at, inline=True)
         if characters:
-            em.add_field(name="Character Numbers:", value=str(characters), inline=False)
+            em.add_field(name="Character Numbers:",
+                         value=str(characters), inline=False)
         if names:
             em.add_field(name="Characters:", value=str(names), inline=False)
         if main:
@@ -489,3 +498,7 @@ class TFS(commands.Cog):
         await self.profiles.update_names(user)
         await self.profiles.update_posts(user)
         await self.profiles.update_active(user)
+
+    @commands.command()
+    async def howtoclaim(self, ctx):
+        await ctx.send('Go to this link: https://www.proboards.com/account/forum (You have to be logged in.)\nRight click, View Source\nCtrl+F: “forum_user_ids”\nCopy the numbers in brackets right next to that. It should look something like this: `["607","1186","1310","813"]` \nIn #bot_stuff, use the command `!claim [paste your numbers]`\nCongratulations, you did it!')
