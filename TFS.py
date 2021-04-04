@@ -334,6 +334,7 @@ class UserProfile:
                     break
                 else:
                     continue
+        return True
 
     async def update_names(self, user):
         name_list = []
@@ -344,6 +345,7 @@ class UserProfile:
                     name = this_character.display_name
                     name_list.append(name)
             await self.data.user(user).display_names.set(name_list)
+        return True
 
     async def update_posts(self, user):
         post_count = 0
@@ -354,7 +356,7 @@ class UserProfile:
                     posts = this_character.posts
                     post_count += int(posts)
             await self.data.user(user).posts.set(post_count)
-        return
+        return True
 
 
 class TFS(commands.Cog):
@@ -486,15 +488,16 @@ class TFS(commands.Cog):
         if main:
             em.add_field(name="Main:", value=main, inline=False)
 
-        #footer = str(user.top_role) + "  |  " + str(user.activity) + "  |  " + "Last post: " + str(self.last_post_time_fancy)
+        #footer = str(user.top_role) + "  |  " + str(user.activity) + "  |  " + "Last post: " + str(user.last_post_time_fancy)
         #em.set_footer(text=footer, icon_url=self.star)
         em.color = user.color
 
         await ctx.send(embed=em)
 
     @commands.command()
-    async def update(self, ctx):
-        user = ctx.message.author
+    async def update(self, ctx, *, user: discord.Member = None):
+        if user is None:
+            user = ctx.message.author
         await self.profiles.update_names(user)
         await self.profiles.update_posts(user)
         await self.profiles.update_active(user)
