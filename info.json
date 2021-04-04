@@ -1,0 +1,11 @@
+{
+    "author": ["Bucky"],
+    "install_msg": "",
+    "name": "TFS",
+    "disabled": false,
+    "short": "",
+    "description": "TFS server utilities cog",
+    "tags": [],
+    "requirements": [],
+    "hidden": false
+}
