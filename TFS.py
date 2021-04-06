@@ -318,6 +318,9 @@ class UserProfile:
     async def get_posts(self, user):
         return await self.data.user(user).posts()
 
+    async def get_active(self, user):
+        return await self.data.user(user).active()
+
     async def register_user(self, user):
         data = await self.data.user(user).database()
         if data is None:
@@ -357,7 +360,21 @@ class UserProfile:
                     post_count += int(posts)
             await self.data.user(user).posts.set(post_count)
         return True
-
+#TODO: fix this somehow
+    async def update_role(self, user, server):
+        members = discord.utils.get(server.roles, name="Members")
+        inactive = discord.utils.get(server.roles, name="Members (Inactive)")
+        guests = discord.utils.get(server.roles, name="Guests")
+        active = self.data.user(user).active 
+        if not self.data.user(user).characters():
+            await bot.remove_roles(user, inactive, members)
+            await redbot.bot.add_roles(user, guests)
+        if active:
+            await redbot.bot.remove_roles(user, inactive, guests)
+            await redbot.bot.add_roles(user, members)
+        else:
+            await redbot.bot.remove_roles(user, members, guests)
+            await redbot.bot.add_roles(user, inactive)
 
 class TFS(commands.Cog):
     """TFS related utilities"""
@@ -446,7 +463,8 @@ class TFS(commands.Cog):
             await self.profiles.add_character(ctx.author, int(num))
         await self.profiles.sort_characters(ctx.author)
         characters = await self.profiles.get_characters(ctx.author)
-        await ctx.send(":white_check_mark: Success. There are now " + str(len(characters)) + " registered to you:")
+        await self.profiles.update_names(ctx.author)
+        await ctx.send(":white_check_mark: Success. There are now " + str(len(characters)) + " characters registered to you: " + str(await self.profiles.get_displaynames(ctx.author)))
 
     @commands.command()
     async def abandon(self, ctx, *, arg):
@@ -473,6 +491,7 @@ class TFS(commands.Cog):
         names = await self.profiles.get_displaynames(user)
         main = await self.profiles.get_main(user)
         posts = await self.profiles.get_posts(user)
+        active = await self.profiles.get_active(user)
 
         em = discord.Embed(title=user.nick)
         em.set_thumbnail(url=user.avatar_url)
@@ -488,8 +507,8 @@ class TFS(commands.Cog):
         if main:
             em.add_field(name="Main:", value=main, inline=False)
 
-        #footer = str(user.top_role) + "  |  " + str(user.activity) + "  |  " + "Last post: " + str(user.last_post_time_fancy)
-        #em.set_footer(text=footer, icon_url=self.star)
+        footer = str(user.top_role) + "  |  " + active_fancy(active) + "  |  " + "Last post: " + "Not Implemented"#str(user.last_post_time_fancy)
+        em.set_footer(text=footer)
         em.color = user.color
 
         await ctx.send(embed=em)
@@ -498,9 +517,12 @@ class TFS(commands.Cog):
     async def update(self, ctx, *, user: discord.Member = None):
         if user is None:
             user = ctx.message.author
+        server = ctx.message.guild
         await self.profiles.update_names(user)
         await self.profiles.update_posts(user)
         await self.profiles.update_active(user)
+        #await self.profiles.update_role(user, server)
+        await ctx.send(":white_check_mark: Success. Display names, post count, active status, and NOT role updated for " + user.name)
 
     @commands.command()
     async def howtoclaim(self, ctx):
