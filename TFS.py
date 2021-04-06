@@ -104,18 +104,18 @@ class Character:
                      value=self.register_date, inline=True)
         if self.age != "Not set":
             em.add_field(name="Age:", value=self.age, inline=True)
-        if self.physical_description != "Not set":
-            em.add_field(name="Physical Description:", value=truncate(
-                self.physical_description), inline=False)
-        if self.clothes_and_equipment != "Not set":
-            em.add_field(name="Clothes and Equipment:", value=truncate(
-                self.clothes_and_equipment), inline=False)
+        if self.appearance != "Not set":
+            em.add_field(name="Appearance:", value=truncate(
+                self.appearance), inline=False)
+        if self.equipment != "Not set":
+            em.add_field(name="Equipment:", value=truncate(
+                self.equipment), inline=False)
         if self.skills_and_abilities != "Not set":
             em.add_field(name="Skills and abilities:", value=truncate(
                 self.skills_and_abilities), inline=False)
-        if self.personality_other != "Not set":
-            em.add_field(name="Personality, other:", value=truncate(
-                self.personality_other), inline=False)
+        if self.biography != "Not set":
+            em.add_field(name="Biography:", value=truncate(
+                self.biography), inline=False)
         footer = self.rank + "  |  " + \
             active_fancy(self.active) + "  |  " + \
             "Last post: " + self.last_post_time_fancy
@@ -236,20 +236,20 @@ class Character:
         return self.custom_field("age")
 
     @property
-    def physical_description(self):
-        return self.custom_field("physicaldescription")
+    def appearance(self):
+        return self.custom_field("appearance")
 
     @property
-    def clothes_and_equipment(self):
-        return self.custom_field("clothesandequipment")
+    def equipment(self):
+        return self.custom_field("equipment")
 
     @property
     def skills_and_abilities(self):
         return self.custom_field("skillsandabilities")
 
     @property
-    def personality_other(self):
-        return self.custom_field("personalityother")
+    def biography(self):
+        return self.custom_field("biography")
 
     # TODO: fix this mess
     def custom_field(self, attribute):
