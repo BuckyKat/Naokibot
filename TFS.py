@@ -360,21 +360,6 @@ class UserProfile:
                     post_count += int(posts)
             await self.data.user(user).posts.set(post_count)
         return True
-#TODO: fix this somehow
-    async def update_role(self, user, server):
-        members = discord.utils.get(server.roles, name="Members")
-        inactive = discord.utils.get(server.roles, name="Members (Inactive)")
-        guests = discord.utils.get(server.roles, name="Guests")
-        active = self.data.user(user).active 
-        if not self.data.user(user).characters():
-            await bot.remove_roles(user, inactive, members)
-            await redbot.bot.add_roles(user, guests)
-        if active:
-            await redbot.bot.remove_roles(user, inactive, guests)
-            await redbot.bot.add_roles(user, members)
-        else:
-            await redbot.bot.remove_roles(user, members, guests)
-            await redbot.bot.add_roles(user, inactive)
 
 class TFS(commands.Cog):
     """TFS related utilities"""
@@ -451,8 +436,9 @@ class TFS(commands.Cog):
     async def show(self, ctx, number):
         """Shows a profile embed for the given character"""
         this_character = await Character.from_num(number)
-        em = this_character.embed
-        await ctx.send(embed=em)
+        async with ctx.typing():
+            em = this_character.embed
+            await ctx.send(embed=em)
 
     @commands.command()
     async def claim(self, ctx, *, arg):
@@ -464,8 +450,12 @@ class TFS(commands.Cog):
         await self.profiles.sort_characters(ctx.author)
         characters = await self.profiles.get_characters(ctx.author)
         await self.profiles.update_names(ctx.author)
-        await ctx.send(":white_check_mark: Success. There are now " + str(len(characters)) + " characters registered to you: " + str(await self.profiles.get_displaynames(ctx.author)))
-
+        async with ctx.typing():
+            name_list = await self.profiles.get_displaynames(ctx.author)
+            await ctx.send(":white_check_mark: Success. There are now " + str(len(characters)) + " characters registered to you: " + str(name_list))
+        if len(characters) > len(name_list):
+            await ctx.send("At least one of your characters hasn't made any posts yet, which means that I can't see them. For any characters whose names aren't listed, post with them in any thread and then do the command `!update`.")
+    
     @commands.command()
     async def abandon(self, ctx, *, arg):
         """Removes a list of characters from your user"""
@@ -517,12 +507,33 @@ class TFS(commands.Cog):
     async def update(self, ctx, *, user: discord.Member = None):
         if user is None:
             user = ctx.message.author
-        server = ctx.message.guild
-        await self.profiles.update_names(user)
-        await self.profiles.update_posts(user)
-        await self.profiles.update_active(user)
-        #await self.profiles.update_role(user, server)
-        await ctx.send(":white_check_mark: Success. Display names, post count, active status, and NOT role updated for " + user.name)
+        async with ctx.typing():
+            await self.profiles.update_names(user)
+            await ctx.send("Display names updated.")
+        async with ctx.typing():
+            await self.profiles.update_posts(user)
+            await ctx.send("Post count updated.")
+        async with ctx.typing():
+            await self.profiles.update_active(user)
+            await ctx.send("Active status updated.")
+
+        members = discord.utils.get(ctx.guild.roles, name="Member")
+        inactive = discord.utils.get(ctx.guild.roles, name="Member (Inactive)")
+        guests = discord.utils.get(ctx.guild.roles, name="Guest")
+        active = await self.profiles.get_active(user)
+        characters = await self.profiles.get_characters(user)
+        if len(characters) == 0:
+            await user.remove_roles(inactive, members)
+            await user.add_roles(guests)
+            await ctx.send("Updated role to Guest. Claim a character and update again for the Member (Inactive) role.")
+        elif (active):
+            await user.remove_roles(inactive, guests)
+            await user.add_roles(members)
+            await ctx.send("Updated role to Member.")
+        else:
+            await user.remove_roles(members, guests)
+            await user.add_roles(inactive)
+            await ctx.send("Updated role to Member (Inactive). To recive the member role, post with one of your characters and `!update` again.")
 
     @commands.command()
     async def howtoclaim(self, ctx):
