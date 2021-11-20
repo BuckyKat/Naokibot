@@ -85,7 +85,7 @@ class Character:
     @classmethod
     async def from_num(cls, num):
         recent_url = "http://themistborneisles.boards.net/user/" + \
-            str(num) + "/recent"
+                     str(num) + "/recent"
         async with aiohttp.ClientSession() as session:
             html = await fetch(session, recent_url)
             soup_object = BeautifulSoup(html, "html.parser")
@@ -96,7 +96,7 @@ class Character:
     @property
     def embed(self):
         em = discord.Embed(title=self.username +
-                           " (" + str(self.number) + ")", url=self.profile_url)
+                                 " (" + str(self.number) + ")", url=self.profile_url, description=("Last post: " + self.last_post_time_fancy + " in " + self.last_post_markdown))
         em.set_thumbnail(url=self.avatar)
         em.set_author(name=self.display_name, icon_url=self.gender_symbol)
         em.add_field(name="Post Count:", value=self.posts, inline=True)
@@ -117,8 +117,7 @@ class Character:
             em.add_field(name="Biography:", value=truncate(
                 self.biography), inline=False)
         footer = self.rank + "  |  " + \
-            active_fancy(self.active) + "  |  " + \
-            "Last post: " + self.last_post_time_fancy
+                 active_fancy(self.active)
         em.set_footer(text=footer, icon_url=self.star)
         em.color = self.color
         return em
@@ -152,6 +151,27 @@ class Character:
         return 0x36393F
 
     @property
+    def last_post_thread(self):
+        _soup = self.soup
+        thread_class = _soup.find(class_="js-thread__title-link")
+        return str(thread_class.contents[0])
+
+    @property
+    def last_post_id(self):
+        _soup = self.soup
+        button_class = _soup.find(class_="quote-button")
+        return str(button_class['href']).split("/")[2]
+
+    @property
+    def last_post_link(self):
+        _soup = self.soup
+        thread_class = _soup.find(class_="thread-link")
+        post_id = self.last_post_id
+        output = "http://themistborneisles.boards.net" + \
+                 thread_class['href'] + "?page=9001&scrollTo=" + post_id
+        return str(output)
+
+    @property
     def last_post_time(self):
         _soup = self.soup
         date_class = _soup.find(class_="date")
@@ -173,6 +193,10 @@ class Character:
             return format_timedelta(time_diff, locale='en_US') + " ago"
         else:
             return "Never"
+
+    @property
+    def last_post_markdown(self):
+        return str("[" + self.last_post_thread + "](" + self.last_post_link + ')')
 
     @property
     def profile_url(self):
@@ -321,6 +345,9 @@ class UserProfile:
     async def get_active(self, user):
         return await self.data.user(user).active()
 
+    async def get_updated(self, user):
+        return await self.data.user(user).updated()
+
     async def register_user(self, user):
         data = await self.data.user(user).database()
         if data is None:
@@ -331,10 +358,13 @@ class UserProfile:
         async with self.data.user(user).characters() as char_list:
             for num in char_list:
                 this_character = await Character.from_num(num)
-                active = this_character.active
-                if active:
-                    await self.data.user(user).active.set(True)
-                    break
+                if this_character:
+                    active = this_character.active
+                    if active:
+                        await self.data.user(user).active.set(True)
+                        break
+                    else:
+                        continue
                 else:
                     continue
         return True
@@ -360,6 +390,7 @@ class UserProfile:
                     post_count += int(posts)
             await self.data.user(user).posts.set(post_count)
         return True
+
 
 class TFS(commands.Cog):
     """TFS related utilities"""
@@ -417,6 +448,10 @@ class TFS(commands.Cog):
             time_diff = timest - now
             fancy_time = format_timedelta(time_diff, locale='en_US') + " ago"
             await ctx.send(fancy_time)
+        await ctx.send(this_character.last_post_id)
+        await ctx.send(this_character.last_post_thread)
+        await ctx.send(this_character.last_post_link)
+
 
     @commands.command()
     async def register_date(self, ctx, number):
@@ -447,17 +482,23 @@ class TFS(commands.Cog):
         await self.profiles.sort_characters(ctx.author)
         for num in numbers:
             await self.profiles.add_character(ctx.author, int(num))
-        await self.profiles.sort_characters(ctx.author)
-        characters = await self.profiles.get_characters(ctx.author)
-        await self.profiles.update_names(ctx.author)
         async with ctx.typing():
+            await self.profiles.sort_characters(ctx.author)
+            characters = await self.profiles.get_characters(ctx.author)
+            await self.profiles.update_names(ctx.author)
             name_list = await self.profiles.get_displaynames(ctx.author)
-            await ctx.send(":white_check_mark: Success. There are now " + str(len(characters)) + " characters registered to you: " + str(name_list))
+        await ctx.send(":white_check_mark: Success. There are now " + str(
+            len(characters)) + " characters registered to you: " + str(name_list))
         if len(characters) > len(name_list):
-            await ctx.send("At least one of your characters hasn't made any posts yet, which means that I can't see them. For any characters whose names aren't listed, post with them in any thread and then do the command `!update`.")
-    
+            await ctx.send(
+                ":warning: At least one of your characters hasn't made any posts yet, which means that I can't see "
+                "them. For any characters whose names aren't listed, post with them in any thread and then do the "
+                "command `!update`.")
+        else:
+            await ctx.send("Use the command `!update` to update your profile.")
+
     @commands.command()
-    async def abandon(self, ctx, *, arg):
+    async def unclaim(self, ctx, *, arg):
         """Removes a list of characters from your user"""
         numbers = list(filter(None, re.sub("[^0-9]+", ",", arg).split(",")))
         await self.profiles.sort_characters(ctx.author)
@@ -497,7 +538,7 @@ class TFS(commands.Cog):
         if main:
             em.add_field(name="Main:", value=main, inline=False)
 
-        footer = str(user.top_role) + "  |  " + active_fancy(active) + "  |  " + "Last post: " + "Not Implemented"#str(user.last_post_time_fancy)
+        footer = str(user.top_role) + "  |  " + active_fancy(active)
         em.set_footer(text=footer)
         em.color = user.color
 
@@ -505,17 +546,18 @@ class TFS(commands.Cog):
 
     @commands.command()
     async def update(self, ctx, *, user: discord.Member = None):
+        """Updates a given user's profile, defaults to you"""
         if user is None:
             user = ctx.message.author
         async with ctx.typing():
             await self.profiles.update_names(user)
-            await ctx.send("Display names updated.")
+            await ctx.send("Display names updated for " + user.name + ".")
         async with ctx.typing():
             await self.profiles.update_posts(user)
-            await ctx.send("Post count updated.")
+            await ctx.send("Post count updated for " + user.name + ".")
         async with ctx.typing():
             await self.profiles.update_active(user)
-            await ctx.send("Active status updated.")
+            await ctx.send("Active status updated for " + user.name + ".")
 
         members = discord.utils.get(ctx.guild.roles, name="Member")
         inactive = discord.utils.get(ctx.guild.roles, name="Member (Inactive)")
@@ -525,16 +567,43 @@ class TFS(commands.Cog):
         if len(characters) == 0:
             await user.remove_roles(inactive, members)
             await user.add_roles(guests)
-            await ctx.send("Updated role to Guest. Claim a character and update again for the Member (Inactive) role.")
+            await ctx.send("Updated role to Guest for " + user.name + ".")
         elif (active):
             await user.remove_roles(inactive, guests)
             await user.add_roles(members)
-            await ctx.send("Updated role to Member.")
+            await ctx.send("Updated role to Member for " + user.name + ".")
         else:
             await user.remove_roles(members, guests)
             await user.add_roles(inactive)
-            await ctx.send("Updated role to Member (Inactive). To recive the member role, post with one of your characters and `!update` again.")
+            await ctx.send("Updated role to Member (Inactive) for " + user.name + ".")
+
+    @commands.admin_or_permissions(manage_roles=True)
+    @commands.command()
+    async def update_all(self, ctx):
+        server = ctx.message.guild
+        members = server.members
+        await ctx.send("I'm going to try to update information for every user in the server. Hold on to your hat.")
+        for member in members:
+            await ctx.invoke(self.update, user=member)
+        await ctx.send("I've finished updating information for all users. _Wew._")
+
+    @commands.command()
+    async def howtoclaimmany(self, ctx):
+        """Gives information on how to claim many characters at once"""
+        await ctx.send('Go to this link: https://www.proboards.com/account/forum (You have to be logged in.)'
+                       + '\n > Right click, View Source\n> Ctrl+F: “forum_user_ids”\n> Copy the numbers in brackets '
+                         'right next to that. '
+                       + " (If you're on multiple proboards forums, make sure you're copying from the TMI section!)"
+                       + '\n > It should look something like this: `["607","1186","1310","813"]`'
+                       + "\n In #bot_stuff, use the command `!claim [paste your numbers]` Then you're done! Do this "
+                         "for all your characters to keep your `!profile` up to date!")
 
     @commands.command()
     async def howtoclaim(self, ctx):
-        await ctx.send('Go to this link: https://www.proboards.com/account/forum (You have to be logged in.)\nRight click, View Source\nCtrl+F: “forum_user_ids”\nCopy the numbers in brackets right next to that. It should look something like this: `["607","1186","1310","813"]` \nIn #bot_stuff, use the command `!claim [paste your numbers]`\nCongratulations, you did it!')
+        """Gives information on how to claim characters"""
+        await ctx.send("Visit your character's page by clicking on their name or clicking on 'CHARACTER' at the top "
+                       "between 'HOME' and 'MESSAGING' "
+                       + '\nLook at the URL for that page, and paste the number from the end of that URL as an '
+                         'argument for the `!claim` command! '
+                       + '\nYou can put in multiple numbers separated by commas to claim multiple characters at once, '
+                         'and if you make a mistake, you can use the `!unclaim` command to remove characters.')
