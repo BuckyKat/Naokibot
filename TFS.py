@@ -4,6 +4,7 @@ import discord
 import re
 from bs4 import BeautifulSoup
 from redbot.core import commands, config, utils
+from redbot.core.commands import Context
 from typing import Any
 from redbot.core import Config
 import datetime
@@ -488,7 +489,7 @@ class TFS(commands.Cog):
             await self.profiles.update_names(ctx.author)
             name_list = await self.profiles.get_displaynames(ctx.author)
         await ctx.send(":white_check_mark: Success. There are now " + str(
-            len(characters)) + " characters registered to you: " + str(name_list))
+            len(characters)) + " characters registered to you: " + self._list_to_str(name_list))
         if len(characters) > len(name_list):
             await ctx.send(
                 ":warning: At least one of your characters hasn't made any posts yet, which means that I can't see "
@@ -532,9 +533,9 @@ class TFS(commands.Cog):
         em.add_field(name="Register Date:", value=user.created_at, inline=True)
         if characters:
             em.add_field(name="Character Numbers:",
-                         value=str(characters), inline=False)
+                         value=self._list_to_str(characters), inline=False)
         if names:
-            em.add_field(name="Characters:", value=str(names), inline=False)
+            em.add_field(name="Characters:", value=self._list_to_str(names), inline=False)
         if main:
             em.add_field(name="Main:", value=main, inline=False)
 
@@ -607,3 +608,31 @@ class TFS(commands.Cog):
                          'argument for the `!claim` command! '
                        + '\nYou can put in multiple numbers separated by commas to claim multiple characters at once, '
                          'and if you make a mistake, you can use the `!unclaim` command to remove characters.')
+
+    @commands.command()
+    async def find(self, ctx: Context, *, args):
+        users_with_name = []
+
+        data = self.config
+        users = await self.profiles.data.all_users()
+        name_to_search = args.lower()
+
+        for user, data in users.items():
+            for display_name in data['display_names']:
+                if display_name.lower() == name_to_search:
+                    name = await ctx.bot.get_or_fetch_user(user)
+                    users_with_name.append(str(name))
+        
+        if len(users_with_name) > 0:
+            return_users = ', '.join(users_with_name)
+            await ctx.send(f'The following users had the name {name_to_search} claimed: {return_users}')
+        else:
+            await ctx.send(f"No users with character name {name_to_search}.")
+
+    def _list_to_str(self, list_to_convert: list) -> str:
+        ret = ''
+        for s in list_to_convert:
+            ret += f'{s}, '
+        
+        ret.strip()
+        return ret[:-2]
