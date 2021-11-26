@@ -84,7 +84,7 @@ class Character:
         self.number = number
 
     @classmethod
-    async def from_num(cls, num):
+    async def from_num(self, num):
         recent_url = "http://themistborneisles.boards.net/user/" + \
                      str(num) + "/recent"
         async with aiohttp.ClientSession() as session:
@@ -609,25 +609,44 @@ class TFS(commands.Cog):
                        + '\nYou can put in multiple numbers separated by commas to claim multiple characters at once, '
                          'and if you make a mistake, you can use the `!unclaim` command to remove characters.')
 
-    @commands.command()
-    async def find(self, ctx: Context, *, args):
-        users_with_name = []
-
-        data = self.config
-        users = await self.profiles.data.all_users()
-        name_to_search = args.lower()
-
+    async def _search_users_by_display_name(self, search_name, ctx, users):
+        results = []
         for user, data in users.items():
             for display_name in data['display_names']:
-                if display_name.lower() == name_to_search:
+                if display_name.lower() == search_name:
                     name = await ctx.bot.get_or_fetch_user(user)
-                    users_with_name.append(str(name))
-        
-        if len(users_with_name) > 0:
-            return_users = ', '.join(users_with_name)
-            await ctx.send(f'The following users had the name {name_to_search} claimed: {return_users}')
+                    results.append(str(name))
+        return results
+
+    async def _search_users_by_character_id(self, search_id, ctx, users):
+        results = []
+        for user, data in users.items():
+            for id in data['characters']:
+                print( id, search_id)
+                if str(id) == str(search_id):
+                    name = await ctx.bot.get_or_fetch_user(user)
+                    results.append(str(name))
+        return results
+
+    @commands.command()
+    async def find(self, ctx: Context, *, args):
+        results = []
+
+        users = await self.profiles.data.all_users()
+        if args.split(' ')[0].isdigit():
+            search = args.split(' ')
+            for id in search:
+                results += await self._search_users_by_character_id(id, ctx, users)
+            search = ', '.join(search)
         else:
-            await ctx.send(f"No users with character name {name_to_search}.")
+            search = args.lower()
+            results = await self._search_users_by_display_name(search, ctx, users)
+            
+        if len(results) > 0:
+            return_users = ', '.join(results)
+            await ctx.send(f'The following users had the name {search} claimed: {return_users}')
+        else:
+            await ctx.send(f"No users with character name {search}.")
 
     def _list_to_str(self, list_to_convert: list) -> str:
         ret = ''
@@ -636,3 +655,4 @@ class TFS(commands.Cog):
         
         ret.strip()
         return ret[:-2]
+
