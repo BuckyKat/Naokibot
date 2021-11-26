@@ -1,9 +1,10 @@
+import datetime
+import re
+
 import aiohttp
 import discord
-import re
-from bs4 import BeautifulSoup
-import datetime
 from babel.dates import format_timedelta
+from bs4 import BeautifulSoup
 
 # CONSTANTS
 factions = {
@@ -30,8 +31,8 @@ factions = {
     "toragana": 0x003471,
     "airli": 0x19477E,
     "tamorjin": 0xFFA280,
-    "correa": 0xbb0a1e,
-    "usque": 0xd794db,
+    "correa": 0xBB0A1E,
+    "usque": 0xD794DB,
 }
 
 
@@ -40,11 +41,13 @@ async def fetch(session, url):
     async with session.get(url) as response:
         return await response.text()
 
+
 def truncate(the_string: str, the_length: int = 500):
     if len(the_string) < the_length:
         return the_string
     else:
         return the_string[0:the_length] + "..."
+
 
 def active_fancy(the_bool: bool):
     if the_bool:
@@ -54,47 +57,60 @@ def active_fancy(the_bool: bool):
 
 
 class Character:
-    def __init__(self, profile, soup, number):
+    def __init__(self, profile, soup, number, discord_name=None):
         self.profile = profile
         self.soup = soup
         self.number = number
+        self.discord_name = discord_name
 
     @classmethod
-    async def from_num(self, num):
-        recent_url = "http://themistborneisles.boards.net/user/" + \
-                     str(num) + "/recent"
+    async def from_num(self, num, discord_name):
+        recent_url = "http://themistborneisles.boards.net/user/" + str(num) + "/recent"
         async with aiohttp.ClientSession() as session:
             html = await fetch(session, recent_url)
             soup_object = BeautifulSoup(html, "html.parser")
         _profile = soup_object.find(class_="mini-profile")
         if _profile:
-            return Character(_profile, soup_object, num)
+            return Character(_profile, soup_object, num, discord_name)
 
     @property
     def embed(self):
-        em = discord.Embed(title=self.username +
-                                 " (" + str(self.number) + ")", url=self.profile_url, description=("Last post: " + self.last_post_time_fancy + " in " + self.last_post_markdown))
+        em = discord.Embed(
+            title=self.username + " (" + str(self.number) + ")",
+            url=self.profile_url,
+            description=(
+                "Last post: "
+                + self.last_post_time_fancy
+                + " in "
+                + self.last_post_markdown
+            ),
+        )
         em.set_thumbnail(url=self.avatar)
         em.set_author(name=self.display_name, icon_url=self.gender_symbol)
+        em.add_field(name="Discord ID:", value=self.discord_name, inline=False)
         em.add_field(name="Post Count:", value=self.posts, inline=True)
-        em.add_field(name="Register Date:",
-                     value=self.register_date, inline=True)
+        em.add_field(name="Register Date:", value=self.register_date, inline=True)
         if self.age != "Not set":
             em.add_field(name="Age:", value=self.age, inline=True)
         if self.appearance != "Not set":
-            em.add_field(name="Appearance:", value=truncate(
-                self.appearance), inline=False)
+            em.add_field(
+                name="Appearance:", value=truncate(self.appearance), inline=False
+            )
         if self.equipment != "Not set":
-            em.add_field(name="Equipment:", value=truncate(
-                self.equipment), inline=False)
+            em.add_field(
+                name="Equipment:", value=truncate(self.equipment), inline=False
+            )
         if self.skills_and_abilities != "Not set":
-            em.add_field(name="Skills and abilities:", value=truncate(
-                self.skills_and_abilities), inline=False)
+            em.add_field(
+                name="Skills and abilities:",
+                value=truncate(self.skills_and_abilities),
+                inline=False,
+            )
         if self.biography != "Not set":
-            em.add_field(name="Biography:", value=truncate(
-                self.biography), inline=False)
-        footer = self.rank + "  |  " + \
-                 active_fancy(self.active)
+            em.add_field(
+                name="Biography:", value=truncate(self.biography), inline=False
+            )
+        footer = self.rank + "  |  " + active_fancy(self.active)
         em.set_footer(text=footer, icon_url=self.star)
         em.color = self.color
         return em
@@ -137,15 +153,19 @@ class Character:
     def last_post_id(self):
         _soup = self.soup
         button_class = _soup.find(class_="quote-button")
-        return str(button_class['href']).split("/")[2]
+        return str(button_class["href"]).split("/")[2]
 
     @property
     def last_post_link(self):
         _soup = self.soup
         thread_class = _soup.find(class_="thread-link")
         post_id = self.last_post_id
-        output = "http://themistborneisles.boards.net" + \
-                 thread_class['href'] + "?page=9001&scrollTo=" + post_id
+        output = (
+            "http://themistborneisles.boards.net"
+            + thread_class["href"]
+            + "?page=9001&scrollTo="
+            + post_id
+        )
         return str(output)
 
     @property
@@ -156,7 +176,7 @@ class Character:
             return None
         else:
             unix_time = str(date_class.contents).split('"')[3]
-            unix_time = float(unix_time[:(len(unix_time) - 3)])
+            unix_time = float(unix_time[: (len(unix_time) - 3)])
 
             date_object = datetime.datetime.fromtimestamp(unix_time)
             return date_object
@@ -167,18 +187,17 @@ class Character:
         if time_stamp:
             now = datetime.datetime.now()
             time_diff = time_stamp - now
-            return format_timedelta(time_diff, locale='en_US') + " ago"
+            return format_timedelta(time_diff, locale="en_US") + " ago"
         else:
             return "Never"
 
     @property
     def last_post_markdown(self):
-        return str("[" + self.last_post_thread + "](" + self.last_post_link + ')')
+        return str("[" + self.last_post_thread + "](" + self.last_post_link + ")")
 
     @property
     def profile_url(self):
-        return "http://themistborneisles.boards.net/user/" + \
-               str(self.number)
+        return "http://themistborneisles.boards.net/user/" + str(self.number)
 
     @property
     def active(self):
@@ -198,7 +217,13 @@ class Character:
     def register_date(self):
         register_date = self.profile.find(class_="o-timestamp time").string
         register_constructor = register_date.split(" ")
-        return register_constructor[0] + " " + register_constructor[1] + " " + register_constructor[2]
+        return (
+            register_constructor[0]
+            + " "
+            + register_constructor[1]
+            + " "
+            + register_constructor[2]
+        )
 
     @property
     def rank(self):
@@ -214,7 +239,7 @@ class Character:
     @property
     def gender(self):
         try:
-            gender = self.profile.find(class_="info").img.attrs['title']
+            gender = self.profile.find(class_="info").img.attrs["title"]
             return str(gender)
         except AttributeError:
             return "None"
@@ -261,11 +286,11 @@ class Character:
             return "Not set"
         else:
             for string in _profile.find(class_=class_name).stripped_strings:
-                if re.search('[a-zA-Z0-9]', string) is not None:
+                if re.search("[a-zA-Z0-9]", string) is not None:
                     attribute_list.append(repr(string).strip("'"))
             # attribute_name = attribute_list[0].partition(":")[0]
             attribute_content = attribute_list[0].partition(":")[2]
-            if re.search('[a-zA-Z0-9]', attribute_content) is None:
+            if re.search("[a-zA-Z0-9]", attribute_content) is None:
                 attribute_content = attribute_list.pop(1)
             attribute_continued = "\n".join(attribute_list[1:])
             return str(attribute_content + "\n" + attribute_continued + "\n")
