@@ -105,11 +105,18 @@ class TFS(commands.Cog):
         await ctx.send(gender)
 
     @commands.command()
-    async def show(self, ctx, number):
+    async def show(self, ctx, *, args):
         """Shows a profile embed for the given character"""
         users = await self.profiles.data.all_users()
-        name = await self._search_users_by_character_id(number, ctx, users)
-        name = self._list_to_str(name)
+
+        if not args.split(" ")[0].isdigit():
+            name = await self._search_users_by_display_name(args.lower(), ctx, users)
+            name = self._list_to_str(name)
+            number = self._find_character_number_by_name(args.lower(), users)
+        else:
+            number = args
+            name = await self._search_users_by_character_id(number, ctx, users)
+            name = self._list_to_str(name)
         this_character = await Character.from_num(number, name)
         async with ctx.typing():
             em = this_character.embed
@@ -289,28 +296,6 @@ class TFS(commands.Cog):
                     results.append(str(name))
         return results
 
-    @commands.command()
-    async def find(self, ctx: Context, *, args):
-        results = []
-
-        users = await self.profiles.data.all_users()
-        if args.split(" ")[0].isdigit():
-            search = args.split(" ")
-            for id in search:
-                results += await self._search_users_by_character_id(id, ctx, users)
-            search = ", ".join(search)
-        else:
-            search = args.lower()
-            results = await self._search_users_by_display_name(search, ctx, users)
-
-        if len(results) > 0:
-            return_users = ", ".join(results)
-            await ctx.send(
-                f"The following users had the name {search} claimed: {return_users}"
-            )
-        else:
-            await ctx.send(f"No users with character name {search}.")
-
     def _list_to_str(self, list_to_convert: list) -> str:
         ret = ""
         for s in list_to_convert:
@@ -318,3 +303,12 @@ class TFS(commands.Cog):
 
         ret.strip()
         return ret[:-2]
+
+    def _find_character_number_by_name(self, name, users):
+        for user, data in users.items():
+            position = 0
+            for display_name in data["display_names"]:
+                if display_name.lower() == name.lower():
+                    return data["characters"][position]
+                position += 1
+        return None

@@ -64,7 +64,7 @@ class Character:
         self.discord_name = discord_name
 
     @classmethod
-    async def from_num(self, num, discord_name):
+    async def from_num(self, num, discord_name=None):
         recent_url = "http://themistborneisles.boards.net/user/" + str(num) + "/recent"
         async with aiohttp.ClientSession() as session:
             html = await fetch(session, recent_url)
