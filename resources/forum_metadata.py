@@ -13,9 +13,10 @@ class Metadata:  # Metadata is probably not a good name
     def __init__(self):
         self.config: Config = Config.get_conf(self, identifier=867530999999)
         default_data = {
-            "character_profiles": {"0": None},
-            "unclaimed_characers": {"0": "no char"},
-            "no_posts": [],
+            'character_profiles': {'0': None},
+            'unclaimed_characers': {'0': ''},
+            'claimed': {'0': ''},
+            'no_posts': [],
         }
         self.config.init_custom("metadata", 1)
         self.config.register_custom("metadata", **default_data)
@@ -58,9 +59,7 @@ class Metadata:  # Metadata is probably not a good name
             await self._update_characters(ctx)
         async with self.config.custom("metadata", ctx.guild.id).character_profiles() as profile_dict:
             if await self._character_exists(ctx, char_id):
-                print(profile_dict[str(char_id)])
                 return profile_dict[str(char_id)]
-            
 
     async def get_character_id(self, ctx, character):
         if type(character) == str:

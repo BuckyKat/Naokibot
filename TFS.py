@@ -109,15 +109,6 @@ class TFS(commands.Cog):
         """Shows a profile embed for the given character"""
         users = await self.profiles.data.all_users()
 
-        # if not args.split(" ")[0].isdigit():
-        #     name = await self._get_discord_id_by_display_name(args.lower(), ctx, users)
-        #     name = self._list_to_str(name)
-        #     number = self._find_character_number_by_name(args.lower(), users)
-        # else:
-        #     number = args
-        #     name = await self._get_discord_id_by_character_id(number, ctx, users)
-        #     name = self._list_to_str(name)
-            
         this_character = await Character.from_num(ctx, args)
         async with ctx.typing():
             em = discord.Embed.from_dict(this_character)
@@ -127,6 +118,13 @@ class TFS(commands.Cog):
     async def claim(self, ctx, *, arg):
         """Adds a list of characters to your user"""
         users = await self.profiles.data.all_users()
+
+        metadata = Metadata()
+        character = metadata.get_character_id(arg)
+
+        await self.profiles.add_character(ctx.author, int(character))
+
+
         if not arg.isdigit():
             numbers = self._find_character_number_by_name(arg.lower(), users)
 
@@ -137,7 +135,7 @@ class TFS(commands.Cog):
         async with ctx.typing():
             await self.profiles.sort_characters(ctx.author)
             characters = await self.profiles.get_characters(ctx.author)
-            await self.profiles.update_names(ctx.author)
+            await self.profiles.update_names(ctx, ctx.author)
             name_list = await self.profiles.get_displaynames(ctx.author)
         await ctx.send(
             ":white_check_mark: Success. There are now "
@@ -219,7 +217,7 @@ class TFS(commands.Cog):
         if user is None:
             user = ctx.message.author
         async with ctx.typing():
-            await self.profiles.update_names(user)
+            await self.profiles.update_names(ctx, user)
             await ctx.send("Display names updated for " + user.name + ".")
         async with ctx.typing():
             await self.profiles.update_posts(user)
@@ -286,15 +284,9 @@ class TFS(commands.Cog):
     @commands.command()
     async def find(self, ctx, *, arg):
         metadata = Metadata()
-        await metadata._update_characters(ctx, int(arg))
-        await ctx.send('Done')
-
-    @commands.command()
-    async def q(self, ctx, *, arg):
-        metadata = Metadata()
-        profile_dict = await metadata.config.custom("metadata", ctx.guild.id).character_profiles()
-        
-        await ctx.send(embed=discord.Embed.from_dict(profile_dict[arg]))
+        users = await self.profiles.data.all_users()
+        characters = await self.profiles.get_characters(users)
+        print(characters)
 
     @commands.command()
     async def clear(self, ctx):
