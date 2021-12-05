@@ -10,6 +10,9 @@ from .user_profile import UserProfile
 
 class Metadata:
     def __init__(self):
+        """This class is used to save character profiles so that they can be accessed without scraping the forumn.
+        This also makes it possible to get any character with posts by their display name.
+        """
         self.config: Config = Config.get_conf(self, identifier=867530999999)
         default_data = {
             "character_profiles": {"0": None},
@@ -21,6 +24,7 @@ class Metadata:
         self.profiles = UserProfile()
 
     def get_profile(self, ctx, num):
+        """Gets a player profile from config as a discord embed object"""
         profile_dict = self.config.custom("metadata", ctx.guild.id).character_profiles()
         return discord.Embed.from_dict(profile_dict[num])
 
@@ -52,6 +56,9 @@ class Metadata:
             return "no char"
 
     async def get_character(self, ctx, character):
+        """Gets a character profile by either dispay name or id.
+        If the character does not exist all characters will be updated.
+        """
         char_id = await self.get_character_id(ctx, character)
         if char_id == None or not await self._character_exists(ctx, char_id):
             await self._update_characters(ctx)
@@ -125,12 +132,14 @@ class Metadata:
                     char_list.append(char)
 
     async def _character_exists(self, ctx, character):
+        """Checks the config to see if the character exists already."""
         char_list = await self.config.custom(
             "metadata", ctx.guild.id
         ).character_profiles()
         return str(character) in char_list.keys()
 
     async def _get_character_id_by_display_name(self, ctx, display_name):
+        """Takes a character id and returns the display name if that character exists"""
         async with self.config.custom(
             "metadata", ctx.guild.id
         ).character_profiles() as char_list:
@@ -143,6 +152,7 @@ class Metadata:
                         return key
 
     async def get_discord_id_by_character_id(self, ctx, char_num):
+        """Takes a character id and returns the discord id of the user who claimed it."""
         users = await self.profiles.data.all_users()
         results = []
         for user, data in users.items():

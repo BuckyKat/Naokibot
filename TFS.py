@@ -111,8 +111,12 @@ class TFS(commands.Cog):
         users = await self.profiles.data.all_users()
 
         this_character = await Character.from_num(ctx, args)
-        char_id = this_character["author"]["name"]
-        discord_id = await self._get_discord_id_by_display_name(char_id, ctx, users)
+
+        discord_id = "Unknown"
+        if this_character != None:
+            char_id = this_character["author"]["name"]
+            discord_id = await self._get_discord_id_by_display_name(char_id, ctx, users)
+            print("DISCORD: ", discord_id, "LEN: ", len(discord_id))
         if len(discord_id) > 0:
             discord_id = discord_id[0]
         else:
@@ -121,7 +125,7 @@ class TFS(commands.Cog):
         async with ctx.typing():
             this_character["fields"][0]["value"] = discord_id
             em = discord.Embed.from_dict(this_character)
-
+            print(this_character)
             await ctx.send(embed=em)
 
     @commands.command()
