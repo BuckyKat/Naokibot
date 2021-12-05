@@ -6,9 +6,7 @@ import discord
 from babel.dates import format_timedelta
 from bs4 import BeautifulSoup
 
-from .helper_functions import fetch, truncate, active_fancy
-
-
+from .helper_functions import active_fancy, fetch, truncate
 
 # CONSTANTS
 factions = {
@@ -80,6 +78,7 @@ class Character:
     @classmethod
     async def from_num(self, ctx, character, discord_name="Unknown"):
         from ..resources.forum_metadata import Metadata
+
         metadata = Metadata()
         char_profile = await metadata.get_character(ctx, character)
         return char_profile
@@ -247,7 +246,7 @@ class Character:
     @property
     def star(self):
         for content in self.profile.contents:
-            if 'storage.proboards.com/forum/images' in str(content):
+            if "storage.proboards.com/forum/images" in str(content):
                 return "https:/" + str(content).partition("/")[2].rstrip('"/>')
 
     @property

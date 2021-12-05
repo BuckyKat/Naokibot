@@ -1,15 +1,16 @@
 import datetime
+import json
 import re
 from typing import Any
-import json
 
 import discord
 from babel.dates import format_timedelta
 from redbot.core import Config, commands
 
 from .resources.character import Character
-from .resources.user_profile import UserProfile
 from .resources.forum_metadata import Metadata
+from .resources.user_profile import UserProfile
+
 
 # HELPER FUNCTIONS
 def _name(self, user, max_length):
@@ -41,28 +42,28 @@ class TFS(commands.Cog):
     async def name(self, ctx, number):
         """Returns a character's name"""
         this_character = await Character.from_num(ctx, number)
-        name = this_character['author']['name']
+        name = this_character["author"]["name"]
         await ctx.send(name)
 
     @commands.command()
     async def pic(self, ctx, number):
         """Returns a character's avatar"""
         this_character = await Character.from_num(ctx, number)
-        url = this_character['thumbnail']['url']
+        url = this_character["thumbnail"]["url"]
         await ctx.send(url)
 
     @commands.command()
     async def username(self, ctx, number):
         """Returns a character's username"""
         this_character = await Character.from_num(ctx, number)
-        username = this_character['title']
+        username = this_character["title"]
         await ctx.send(username)
 
     @commands.command()
     async def posts(self, ctx, number):
         """Returns a character's posts"""
         this_character = await Character.from_num(ctx, number)
-        posts = this_character['fields'][1]['value']
+        posts = this_character["fields"][1]["value"]
         await ctx.send(posts)
 
     @commands.command()
@@ -110,28 +111,24 @@ class TFS(commands.Cog):
         users = await self.profiles.data.all_users()
 
         this_character = await Character.from_num(ctx, args)
+        char_id = this_character["author"]["name"]
+        discord_id = await self._get_discord_id_by_display_name(char_id, ctx, users)
+        discord_id = discord_id[0]
+        print(discord_id)
         async with ctx.typing():
+            this_character["fields"][0]["value"] = discord_id
             em = discord.Embed.from_dict(this_character)
+
             await ctx.send(embed=em)
 
     @commands.command()
     async def claim(self, ctx, *, arg):
         """Adds a list of characters to your user"""
-        users = await self.profiles.data.all_users()
 
         metadata = Metadata()
-        character = metadata.get_character_id(arg)
+        name = await metadata.get_character_id(ctx, arg)
 
-        await self.profiles.add_character(ctx.author, int(character))
-
-
-        if not arg.isdigit():
-            numbers = self._find_character_number_by_name(arg.lower(), users)
-
-        numbers = list(filter(None, re.sub("[^0-9]+", ",", arg).split(",")))
-        await self.profiles.sort_characters(ctx.author)
-        for num in numbers:
-            await self.profiles.add_character(ctx.author, int(num))
+        await self.profiles.add_character(ctx.author, int(name))
         async with ctx.typing():
             await self.profiles.sort_characters(ctx.author)
             characters = await self.profiles.get_characters(ctx.author)
@@ -282,24 +279,25 @@ class TFS(commands.Cog):
         )
 
     @commands.command()
-    async def find(self, ctx, *, arg):
+    async def c(self, ctx, *, arg):
         metadata = Metadata()
-        users = await self.profiles.data.all_users()
-        characters = await self.profiles.get_characters(users)
-        print(characters)
+
+        for key, user in metadata.character_profiles.items():
+            print(user)
 
     @commands.command()
     async def clear(self, ctx):
         metadata = Metadata()
-        async with metadata.config.custom("metadata", ctx.guild.id).character_profiles() as profile_dict:
+        async with metadata.config.custom(
+            "metadata", ctx.guild.id
+        ).character_profiles() as profile_dict:
             profile_dict.clear()
-        
 
     async def _get_discord_id_by_display_name(self, search_name, ctx, users):
         results = []
         for user, data in users.items():
             for display_name in data["display_names"]:
-                if display_name.lower() == search_name:
+                if display_name.lower() == search_name.lower():
                     name = await ctx.bot.get_or_fetch_user(user)
                     results.append(str(name))
         return results

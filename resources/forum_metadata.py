@@ -1,22 +1,20 @@
-from redbot.core import Config
 import aiohttp
-from bs4 import BeautifulSoup
 import discord
+from bs4 import BeautifulSoup
+from redbot.core import Config
+from redbot.core.commands import Context
 
 from .helper_functions import fetch
 from .user_profile import UserProfile
 
-from redbot.core.commands import Context
 
-
-class Metadata:  # Metadata is probably not a good name
+class Metadata:
     def __init__(self):
         self.config: Config = Config.get_conf(self, identifier=867530999999)
         default_data = {
-            'character_profiles': {'0': None},
-            'unclaimed_characers': {'0': ''},
-            'claimed': {'0': ''},
-            'no_posts': [],
+            "character_profiles": {"0": None},
+            "unclaimed_characers": {"0": ""},
+            "no_posts": [],
         }
         self.config.init_custom("metadata", 1)
         self.config.register_custom("metadata", **default_data)
@@ -37,7 +35,7 @@ class Metadata:  # Metadata is probably not a good name
         """
         from .character import Character
 
-        discord_name = await self._get_discord_id_by_character_id(ctx, num)
+        discord_name = await self.get_discord_id_by_character_id(ctx, num)
         recent_url = "http://themistborneisles.boards.net/user/" + str(num) + "/recent"
         async with aiohttp.ClientSession() as session:
             html = await fetch(session, recent_url)
@@ -57,11 +55,14 @@ class Metadata:  # Metadata is probably not a good name
         char_id = await self.get_character_id(ctx, character)
         if char_id == None or not await self._character_exists(ctx, char_id):
             await self._update_characters(ctx)
-        async with self.config.custom("metadata", ctx.guild.id).character_profiles() as profile_dict:
+        async with self.config.custom(
+            "metadata", ctx.guild.id
+        ).character_profiles() as profile_dict:
             if await self._character_exists(ctx, char_id):
                 return profile_dict[str(char_id)]
 
     async def get_character_id(self, ctx, character):
+        """This will take a character name or number and return the number of that charadcter."""
         if type(character) == str:
             if character.isdigit():
                 return await self.get_character_id(ctx, int(character))
@@ -79,13 +80,15 @@ class Metadata:  # Metadata is probably not a good name
         """Finds the last character and searches the forum for characters after that.
         Characters that are found are updated in the config.
         """
-        print('Updating')
+        print("Updating")
         timed = True
         if timeout == 0:
             timed = False
 
         no_posts = []
-        char_list = await self.config.custom("metadata", ctx.guild.id).character_profiles()
+        char_list = await self.config.custom(
+            "metadata", ctx.guild.id
+        ).character_profiles()
         keys = list(char_list.keys())
         keys.sort(key=lambda num: int(num))
         char_id = int(keys[-1])
@@ -93,7 +96,7 @@ class Metadata:  # Metadata is probably not a good name
             char_id = 1
         more_characters = True
         one_more = False
-        while(more_characters):
+        while more_characters:
             if one_more:
                 more_characters = False
             if not await self._character_exists(ctx, char_id):
@@ -105,9 +108,11 @@ class Metadata:  # Metadata is probably not a good name
                     one_more = False
                 else:
                     one_more = False
-                    async with self.config.custom("metadata", ctx.guild.id).character_profiles() as profile_dict:
+                    async with self.config.custom(
+                        "metadata", ctx.guild.id
+                    ).character_profiles() as profile_dict:
                         profile_dict.update({char_id: char.embed.to_dict()})
-            
+
             char_id += 1
             if timed:
                 timeout -= 1
@@ -120,7 +125,9 @@ class Metadata:  # Metadata is probably not a good name
                     char_list.append(char)
 
     async def _character_exists(self, ctx, character):
-        char_list = await self.config.custom("metadata", ctx.guild.id).character_profiles()
+        char_list = await self.config.custom(
+            "metadata", ctx.guild.id
+        ).character_profiles()
         return str(character) in char_list.keys()
 
     async def _get_character_id_by_display_name(self, ctx, display_name):
@@ -129,10 +136,13 @@ class Metadata:  # Metadata is probably not a good name
         ).character_profiles() as char_list:
             for key, char in char_list.items():
                 if char:
-                    if char is not None and char['author']['name'].lower() == display_name.lower():
+                    if (
+                        char is not None
+                        and char["author"]["name"].lower() == display_name.lower()
+                    ):
                         return key
 
-    async def _get_discord_id_by_character_id(self, ctx, char_num):
+    async def get_discord_id_by_character_id(self, ctx, char_num):
         users = await self.profiles.data.all_users()
         results = []
         for user, data in users.items():

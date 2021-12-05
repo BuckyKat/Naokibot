@@ -50,8 +50,6 @@ class UserProfile:
             await self.data.user(user).characters.set(char_list)
 
     async def get_characters(self, user):
-        print(await self.data.all_users())
-        print('^^^^^^^^^^^')
         return await self.data.user(user).characters()
 
     async def get_displaynames(self, user):
@@ -96,8 +94,7 @@ class UserProfile:
             for num in char_list:
                 this_character = await Character.from_num(ctx, num)
                 if this_character:
-                    print('++++++++', this_character)
-                    name = this_character.display_name
+                    name = this_character["author"]["name"]
                     name_list.append(name)
             await self.data.user(user).display_names.set(name_list)
         return True
