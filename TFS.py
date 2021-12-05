@@ -113,8 +113,11 @@ class TFS(commands.Cog):
         this_character = await Character.from_num(ctx, args)
         char_id = this_character["author"]["name"]
         discord_id = await self._get_discord_id_by_display_name(char_id, ctx, users)
-        discord_id = discord_id[0]
-        print(discord_id)
+        if len(discord_id) > 0:
+            discord_id = discord_id[0]
+        else:
+            discord_id = "Unknown"
+
         async with ctx.typing():
             this_character["fields"][0]["value"] = discord_id
             em = discord.Embed.from_dict(this_character)
@@ -242,7 +245,6 @@ class TFS(commands.Cog):
             await ctx.send("Updated role to Member (Inactive) for " + user.name + ".")
 
     @commands.admin_or_permissions(manage_roles=True)
-    @commands.command()
     async def update_all(self, ctx):
         server = ctx.message.guild
         members = server.members
@@ -278,20 +280,14 @@ class TFS(commands.Cog):
             "and if you make a mistake, you can use the `!unclaim` command to remove characters."
         )
 
-    @commands.command()
-    async def c(self, ctx, *, arg):
-        metadata = Metadata()
-
-        for key, user in metadata.character_profiles.items():
-            print(user)
-
-    @commands.command()
+    @commands.admin_or_permissions(manage_roles=True)
     async def clear(self, ctx):
         metadata = Metadata()
         async with metadata.config.custom(
             "metadata", ctx.guild.id
         ).character_profiles() as profile_dict:
             profile_dict.clear()
+        await ctx.send("Cache cleared.")
 
     async def _get_discord_id_by_display_name(self, search_name, ctx, users):
         results = []
