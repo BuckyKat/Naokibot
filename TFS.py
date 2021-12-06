@@ -111,12 +111,10 @@ class TFS(commands.Cog):
         users = await self.profiles.data.all_users()
 
         this_character = await Character.from_num(ctx, args)
-
         discord_id = "Unknown"
         if this_character != None:
             char_id = this_character["author"]["name"]
             discord_id = await self._get_discord_id_by_display_name(char_id, ctx, users)
-            print("DISCORD: ", discord_id, "LEN: ", len(discord_id))
         if len(discord_id) > 0:
             discord_id = discord_id[0]
         else:
@@ -125,7 +123,6 @@ class TFS(commands.Cog):
         async with ctx.typing():
             this_character["fields"][0]["value"] = discord_id
             em = discord.Embed.from_dict(this_character)
-            print(this_character)
             await ctx.send(embed=em)
 
     @commands.command()
@@ -224,10 +221,10 @@ class TFS(commands.Cog):
             await self.profiles.update_names(ctx, user)
             await ctx.send("Display names updated for " + user.name + ".")
         async with ctx.typing():
-            await self.profiles.update_posts(user)
+            await self.profiles.update_posts(ctx, user)
             await ctx.send("Post count updated for " + user.name + ".")
         async with ctx.typing():
-            await self.profiles.update_active(user)
+            await self.profiles.update_active(ctx, user)
             await ctx.send("Active status updated for " + user.name + ".")
 
         members = discord.utils.get(ctx.guild.roles, name="Member")
@@ -285,6 +282,7 @@ class TFS(commands.Cog):
         )
 
     @commands.admin_or_permissions(manage_roles=True)
+    @commands.command()
     async def clear(self, ctx):
         metadata = Metadata()
         async with metadata.config.custom(

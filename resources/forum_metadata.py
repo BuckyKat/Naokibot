@@ -61,7 +61,8 @@ class Metadata:
         """
         char_id = await self.get_character_id(ctx, character)
         if char_id == None or not await self._character_exists(ctx, char_id):
-            await self._update_characters(ctx)
+            await self._update_characters(ctx, character)
+            char_id = await self.get_character_id(ctx, character)
         async with self.config.custom(
             "metadata", ctx.guild.id
         ).character_profiles() as profile_dict:
@@ -83,53 +84,70 @@ class Metadata:
                 return character
         return None
 
-    async def _update_characters(self, ctx: Context, timeout=0):
+    async def _update_characters(self, ctx: Context, character=None, timeout=0):
         """Finds the last character and searches the forum for characters after that.
         Characters that are found are updated in the config.
         """
         print("Updating")
-        timed = True
-        if timeout == 0:
-            timed = False
+        await ctx.send("Give me a second to find that...")
+        # if character is an int then just scrape it and return
+        if type(character) == str and character.isdigit():
+            character = int(character)
 
-        no_posts = []
-        char_list = await self.config.custom(
-            "metadata", ctx.guild.id
-        ).character_profiles()
-        keys = list(char_list.keys())
-        keys.sort(key=lambda num: int(num))
-        char_id = int(keys[-1])
-        if char_id == 0:
+        if type(character) == int:
+            char = await self._fetch_character_profile(ctx, character)
+            async with self.config.custom(
+                "metadata", ctx.guild.id
+            ).character_profiles() as profile_dict:
+                profile_dict.update({character: char.embed.to_dict()})
+        else:
+            # This is used to stop update after a certain number of runs. I used it for testing, it could be used to stop the bot in edge cases where multiple characters are deleted in a row.
+            timed = True
+            if timeout == 0:
+                timed = False
+
+            char_list = await self.config.custom(
+                "metadata", ctx.guild.id
+            ).character_profiles()  # get all the character profiles
+            keys = list(char_list.keys())
+            keys.sort(key=lambda num: int(num))
+
             char_id = 1
-        more_characters = True
-        one_more = False
-        while more_characters:
-            if one_more:
-                more_characters = False
-            if not await self._character_exists(ctx, char_id):
-                char = await self._fetch_character_profile(ctx, char_id)
-                if char == "no char":
-                    one_more = True
-                elif char == "no posts":
-                    no_posts.append(char_id)
-                    one_more = False
-                else:
-                    one_more = False
-                    async with self.config.custom(
-                        "metadata", ctx.guild.id
-                    ).character_profiles() as profile_dict:
-                        profile_dict.update({char_id: char.embed.to_dict()})
 
-            char_id += 1
-            if timed:
-                timeout -= 1
-                if timeout <= 0:
+            more_characters = True
+            one_more = False
+            while (
+                more_characters
+            ):  # increments the characeter id by one and scrapes forum for characters w/ posts
+                if one_more:
                     more_characters = False
-
-        async with self.config.custom("metadata", ctx.guild.id).no_posts() as char_list:
-            for char in no_posts:
-                if char not in char_list:
-                    char_list.append(char)
+                if not await self._character_exists(ctx, char_id):
+                    char = await self._fetch_character_profile(ctx, char_id)
+                    if char == "no char":
+                        one_more = True
+                    elif char == "no posts":
+                        async with self.config.custom(
+                            "metadata", ctx.guild.id
+                        ).no_posts() as no_posts:
+                            if char_id not in no_posts:
+                                no_posts.append(char_id)
+                        one_more = False
+                    else:
+                        more_characters = True
+                        one_more = False
+                        async with self.config.custom(
+                            "metadata", ctx.guild.id
+                        ).character_profiles() as profile_dict:
+                            profile_dict.update({char_id: char.embed.to_dict()})
+                            display_name = char.display_name
+                            print(f"Character: {display_name} saved.")
+                            if display_name.lower() == character.lower():
+                                return
+                char_id += 1
+                if timed:
+                    timeout -= 1
+                    if timeout <= 0:
+                        more_characters = False
 
     async def _character_exists(self, ctx, character):
         """Checks the config to see if the character exists already."""
