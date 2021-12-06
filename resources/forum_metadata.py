@@ -88,7 +88,7 @@ class Metadata:
         """Finds the last character and searches the forum for characters after that.
         Characters that are found are updated in the config.
         """
-        print("Updating")
+        await ctx.send("Updating characters.")
         await ctx.send("Give me a second to find that...")
         # if character is an int then just scrape it and return
         if type(character) == str and character.isdigit():
@@ -140,7 +140,7 @@ class Metadata:
                         ).character_profiles() as profile_dict:
                             profile_dict.update({char_id: char.embed.to_dict()})
                             display_name = char.display_name
-                            print(f"Character: {display_name} saved.")
+                            await ctx.send(f"Character: {display_name} saved.")
                             if display_name.lower() == character.lower():
                                 return
                 char_id += 1

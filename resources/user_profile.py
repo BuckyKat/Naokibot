@@ -108,10 +108,8 @@ class UserProfile:
                 this_character = await Character.from_num(ctx, num)
                 if this_character:
                     for field in this_character["fields"]:
-                        print(field["name"])
                         if "Post Count" in field["name"]:
                             posts = field["value"]
                             post_count += int(posts)
             await self.data.user(user).posts.set(post_count)
-        print(post_count)
         return True

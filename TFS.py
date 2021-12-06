@@ -156,23 +156,23 @@ class TFS(commands.Cog):
     @commands.command()
     async def unclaim(self, ctx, *, arg):
         """Removes a list of characters from your user"""
-        numbers = list(filter(None, re.sub("[^0-9]+", ",", arg).split(",")))
+        metadata = Metadata()
+        num = await metadata.get_character_id(ctx, arg)
         await self.profiles.sort_characters(ctx.author)
-        for num in numbers:
-            try:
-                await self.profiles.remove_character(ctx.author, int(num))
-                await ctx.send(
-                    ":white_check_mark: Success. Character #"
-                    + num
-                    + " has been removed from your profile."
-                )
-            except ValueError:
-                await ctx.send(
-                    "Error: character # "
-                    + num
-                    + " cannot be unclaimed because they were not claimed to begin with."
-                )
-                continue
+
+        try:
+            await self.profiles.remove_character(ctx.author, int(num))
+            await ctx.send(
+                ":white_check_mark: Success. Character #"
+                + str(num)
+                + " has been removed from your profile."
+            )
+        except ValueError:
+            await ctx.send(
+                "Error: character # "
+                + str(num)
+                + " cannot be unclaimed because they were not claimed to begin with."
+            )
         await self.profiles.sort_characters(ctx.author)
 
     @commands.command()
