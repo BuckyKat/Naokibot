@@ -6,6 +6,8 @@ import discord
 from babel.dates import format_timedelta
 from bs4 import BeautifulSoup
 
+from .helper_functions import active_fancy, fetch, truncate
+
 # CONSTANTS
 factions = {
     "isra": 0x650D1B,
@@ -57,21 +59,29 @@ def active_fancy(the_bool: bool):
 
 
 class Character:
-    def __init__(self, profile, soup, number, discord_name=None):
+    def __init__(self, profile, soup, number, discord_name="Unknown"):
         self.profile = profile
         self.soup = soup
         self.number = number
         self.discord_name = discord_name
 
+    # @classmethod
+    # async def from_num(self, num, discord_name="Unknown"):
+    #     recent_url = "http://themistborneisles.boards.net/user/" + str(num) + "/recent"
+    #     async with aiohttp.ClientSession() as session:
+    #         html = await fetch(session, recent_url)
+    #         soup_object = BeautifulSoup(html, "html.parser")
+    #     _profile = soup_object.find(class_="mini-profile")
+    #     if _profile:
+    #         return Character(_profile, soup_object, num, discord_name)
+
     @classmethod
-    async def from_num(self, num, discord_name=None):
-        recent_url = "http://themistborneisles.boards.net/user/" + str(num) + "/recent"
-        async with aiohttp.ClientSession() as session:
-            html = await fetch(session, recent_url)
-            soup_object = BeautifulSoup(html, "html.parser")
-        _profile = soup_object.find(class_="mini-profile")
-        if _profile:
-            return Character(_profile, soup_object, num, discord_name)
+    async def from_num(self, ctx, character, discord_name="Unknown"):
+        from ..resources.forum_metadata import Metadata
+
+        metadata = Metadata()
+        char_profile = await metadata.get_character(ctx, character)
+        return char_profile
 
     @property
     def embed(self):
@@ -111,7 +121,8 @@ class Character:
                 name="Biography:", value=truncate(self.biography), inline=False
             )
         footer = self.rank + "  |  " + active_fancy(self.active)
-        em.set_footer(text=footer, icon_url=self.star)
+        if self.star != None:
+            em.set_footer(text=footer, icon_url=self.star)
         em.color = self.color
         return em
 
@@ -234,7 +245,9 @@ class Character:
 
     @property
     def star(self):
-        return "https:/" + str(self.profile.contents[6]).partition("/")[2].rstrip('"/>')
+        for content in self.profile.contents:
+            if "storage.proboards.com/forum/images" in str(content):
+                return "https:/" + str(content).partition("/")[2].rstrip('"/>')
 
     @property
     def gender(self):
@@ -289,8 +302,8 @@ class Character:
                 if re.search("[a-zA-Z0-9]", string) is not None:
                     attribute_list.append(repr(string).strip("'"))
             # attribute_name = attribute_list[0].partition(":")[0]
-            attribute_content = attribute_list[0].partition(":")[2]
-            if re.search("[a-zA-Z0-9]", attribute_content) is None:
+            attribute_content = attribute_list[-1].partition(":")[2]
+            if attribute_content == None:
                 attribute_content = attribute_list.pop(1)
             attribute_continued = "\n".join(attribute_list[1:])
             return str(attribute_content + "\n" + attribute_continued + "\n")

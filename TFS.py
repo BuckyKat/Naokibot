@@ -1,14 +1,15 @@
 import datetime
+import json
 import re
 from typing import Any
 
 import discord
 from babel.dates import format_timedelta
 from redbot.core import Config, commands
-from redbot.core.commands import Context
 
-from .character import Character
-from .user_profile import UserProfile
+from .resources.character import Character
+from .resources.forum_metadata import Metadata
+from .resources.user_profile import UserProfile
 
 
 # HELPER FUNCTIONS
@@ -40,35 +41,35 @@ class TFS(commands.Cog):
     @commands.command()
     async def name(self, ctx, number):
         """Returns a character's name"""
-        this_character = await Character.from_num(number)
-        name = this_character.display_name
-        await ctx.send("Name: " + name)
+        this_character = await Character.from_num(ctx, number)
+        name = this_character["author"]["name"]
+        await ctx.send(name)
 
     @commands.command()
     async def pic(self, ctx, number):
         """Returns a character's avatar"""
-        this_character = await Character.from_num(number)
-        url = this_character.avatar
+        this_character = await Character.from_num(ctx, number)
+        url = this_character["thumbnail"]["url"]
         await ctx.send(url)
 
     @commands.command()
     async def username(self, ctx, number):
         """Returns a character's username"""
-        this_character = await Character.from_num(number)
-        username = this_character.username
+        this_character = await Character.from_num(ctx, number)
+        username = this_character["title"]
         await ctx.send(username)
 
     @commands.command()
     async def posts(self, ctx, number):
         """Returns a character's posts"""
-        this_character = await Character.from_num(number)
-        posts = this_character.posts
+        this_character = await Character.from_num(ctx, number)
+        posts = this_character["fields"][1]["value"]
         await ctx.send(posts)
 
     @commands.command()
     async def custom(self, ctx, attribute, number):
         """Returns a custom attribute for a character"""
-        this_character = await Character.from_num(number)
+        this_character = await Character.from_num(ctx, number)
         content = this_character.custom_field(attribute)
         if content is None:
             await ctx.send("None!")
@@ -78,7 +79,7 @@ class TFS(commands.Cog):
     @commands.command()
     async def lastpost(self, ctx, number):
         """Returns the date of a character's last post"""
-        this_character = await Character.from_num(number)
+        this_character = await Character.from_num(ctx, number)
         timest = this_character.last_post_time
         await ctx.send(str(timest))
         if timest:
@@ -93,14 +94,14 @@ class TFS(commands.Cog):
     @commands.command()
     async def register_date(self, ctx, number):
         """Returns the date a given character was created on"""
-        this_character = await Character.from_num(number)
+        this_character = await Character.from_num(ctx, number)
         date = this_character.register_date
         await ctx.send(date)
 
     @commands.command()
     async def gender(self, ctx, number):
         """Returns a character's listed gender"""
-        this_character = await Character.from_num(number)
+        this_character = await Character.from_num(ctx, number)
         gender = this_character.gender
         await ctx.send(gender)
 
@@ -109,30 +110,33 @@ class TFS(commands.Cog):
         """Shows a profile embed for the given character"""
         users = await self.profiles.data.all_users()
 
-        if not args.split(" ")[0].isdigit():
-            name = await self._search_users_by_display_name(args.lower(), ctx, users)
-            name = self._list_to_str(name)
-            number = self._find_character_number_by_name(args.lower(), users)
+        this_character = await Character.from_num(ctx, args)
+        discord_id = "Unknown"
+        if this_character != None:
+            char_id = this_character["author"]["name"]
+            discord_id = await self._get_discord_id_by_display_name(char_id, ctx, users)
+        if len(discord_id) > 0:
+            discord_id = discord_id[0]
         else:
-            number = args
-            name = await self._search_users_by_character_id(number, ctx, users)
-            name = self._list_to_str(name)
-        this_character = await Character.from_num(number, name)
+            discord_id = "Unknown"
+
         async with ctx.typing():
-            em = this_character.embed
+            this_character["fields"][0]["value"] = discord_id
+            em = discord.Embed.from_dict(this_character)
             await ctx.send(embed=em)
 
     @commands.command()
     async def claim(self, ctx, *, arg):
         """Adds a list of characters to your user"""
-        numbers = list(filter(None, re.sub("[^0-9]+", ",", arg).split(",")))
-        await self.profiles.sort_characters(ctx.author)
-        for num in numbers:
-            await self.profiles.add_character(ctx.author, int(num))
+
+        metadata = Metadata()
+        name = await metadata.get_character_id(ctx, arg)
+
+        await self.profiles.add_character(ctx.author, int(name))
         async with ctx.typing():
             await self.profiles.sort_characters(ctx.author)
             characters = await self.profiles.get_characters(ctx.author)
-            await self.profiles.update_names(ctx.author)
+            await self.profiles.update_names(ctx, ctx.author)
             name_list = await self.profiles.get_displaynames(ctx.author)
         await ctx.send(
             ":white_check_mark: Success. There are now "
@@ -152,23 +156,23 @@ class TFS(commands.Cog):
     @commands.command()
     async def unclaim(self, ctx, *, arg):
         """Removes a list of characters from your user"""
-        numbers = list(filter(None, re.sub("[^0-9]+", ",", arg).split(",")))
+        metadata = Metadata()
+        num = await metadata.get_character_id(ctx, arg)
         await self.profiles.sort_characters(ctx.author)
-        for num in numbers:
-            try:
-                await self.profiles.remove_character(ctx.author, int(num))
-                await ctx.send(
-                    ":white_check_mark: Success. Character #"
-                    + num
-                    + " has been removed from your profile."
-                )
-            except ValueError:
-                await ctx.send(
-                    "Error: character # "
-                    + num
-                    + " cannot be unclaimed because they were not claimed to begin with."
-                )
-                continue
+
+        try:
+            await self.profiles.remove_character(ctx.author, int(num))
+            await ctx.send(
+                ":white_check_mark: Success. Character #"
+                + str(num)
+                + " has been removed from your profile."
+            )
+        except ValueError:
+            await ctx.send(
+                "Error: character # "
+                + str(num)
+                + " cannot be unclaimed because they were not claimed to begin with."
+            )
         await self.profiles.sort_characters(ctx.author)
 
     @commands.command()
@@ -214,13 +218,13 @@ class TFS(commands.Cog):
         if user is None:
             user = ctx.message.author
         async with ctx.typing():
-            await self.profiles.update_names(user)
+            await self.profiles.update_names(ctx, user)
             await ctx.send("Display names updated for " + user.name + ".")
         async with ctx.typing():
-            await self.profiles.update_posts(user)
+            await self.profiles.update_posts(ctx, user)
             await ctx.send("Post count updated for " + user.name + ".")
         async with ctx.typing():
-            await self.profiles.update_active(user)
+            await self.profiles.update_active(ctx, user)
             await ctx.send("Active status updated for " + user.name + ".")
 
         members = discord.utils.get(ctx.guild.roles, name="Member")
@@ -242,7 +246,6 @@ class TFS(commands.Cog):
             await ctx.send("Updated role to Member (Inactive) for " + user.name + ".")
 
     @commands.admin_or_permissions(manage_roles=True)
-    @commands.command()
     async def update_all(self, ctx):
         server = ctx.message.guild
         members = server.members
@@ -278,16 +281,26 @@ class TFS(commands.Cog):
             "and if you make a mistake, you can use the `!unclaim` command to remove characters."
         )
 
-    async def _search_users_by_display_name(self, search_name, ctx, users):
+    @commands.admin_or_permissions(manage_roles=True)
+    @commands.command()
+    async def clear(self, ctx):
+        metadata = Metadata()
+        async with metadata.config.custom(
+            "metadata", ctx.guild.id
+        ).character_profiles() as profile_dict:
+            profile_dict.clear()
+        await ctx.send("Cache cleared.")
+
+    async def _get_discord_id_by_display_name(self, search_name, ctx, users):
         results = []
         for user, data in users.items():
             for display_name in data["display_names"]:
-                if display_name.lower() == search_name:
+                if display_name.lower() == search_name.lower():
                     name = await ctx.bot.get_or_fetch_user(user)
                     results.append(str(name))
         return results
 
-    async def _search_users_by_character_id(self, search_id, ctx, users):
+    async def _get_discord_id_by_character_id(self, search_id, ctx, users):
         results = []
         for user, data in users.items():
             for id in data["characters"]:
