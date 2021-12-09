@@ -7,10 +7,9 @@ import discord
 from babel.dates import format_timedelta
 from redbot.core import Config, commands
 
-from .resources.character import Character
-from .resources.forum_metadata import Metadata
-from .resources.user_profile import UserProfile
-
+from .src.character import Character
+from .src.forum_metadata import Metadata
+from .src.user_profile import UserProfile
 
 # HELPER FUNCTIONS
 def _name(self, user, max_length):
