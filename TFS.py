@@ -109,6 +109,7 @@ class TFS(commands.Cog):
     async def show(self, ctx, *, args):
         """Shows a profile embed for the given character"""
         users = await self.profiles.data.all_users()
+        metadata = Metadata()
 
         this_character = await Character.from_num(ctx, args)
         discord_id = "Unknown"
@@ -120,17 +121,26 @@ class TFS(commands.Cog):
         else:
             discord_id = "Unknown"
 
-        async with ctx.typing():
-            this_character["fields"][0]["value"] = discord_id
-            em = discord.Embed.from_dict(this_character)
-            await ctx.send(embed=em)
+        if this_character != None:
+            async with ctx.typing():
+                this_character["fields"][0]["value"] = discord_id
+                em = discord.Embed.from_dict(this_character)
+                await ctx.send(embed=em)
 
     @commands.command()
     async def claim(self, ctx, *, arg):
         """Adds a list of characters to your user"""
 
         metadata = Metadata()
-        name = await metadata.get_character_id(ctx, arg)
+        # if it is a number with no posts, resolve name to that number,
+        # else look for the character name 
+        if await metadata.character_has_no_posts(ctx, arg):
+            name = arg
+        else:
+            name = await metadata.get_character_id(ctx, arg)
+            
+        if name == None:
+            await ctx.send(f'That character may not exist. Verify with !show {arg}')
 
         await self.profiles.add_character(ctx.author, int(name))
         async with ctx.typing():
@@ -154,11 +164,15 @@ class TFS(commands.Cog):
             await ctx.send("Use the command `!update` to update your profile.")
 
     @commands.command()
-    async def unclaim(self, ctx, *, arg):
+    async def unclaim(self, ctx, *, arg: str):
         """Removes a list of characters from your user"""
         metadata = Metadata()
-        num = await metadata.get_character_id(ctx, arg)
-        await self.profiles.sort_characters(ctx.author)
+        user = ctx.message.author
+        if arg.isdigit() and int(arg) in await self.profiles.get_characters(user):
+            num = int(arg)
+        else:
+            num = await metadata.get_character_id(ctx, arg)
+            await self.profiles.sort_characters(ctx.author)
 
         try:
             await self.profiles.remove_character(ctx.author, int(num))
@@ -246,6 +260,7 @@ class TFS(commands.Cog):
             await ctx.send("Updated role to Member (Inactive) for " + user.name + ".")
 
     @commands.admin_or_permissions(manage_roles=True)
+    @commands.command()
     async def update_all(self, ctx):
         server = ctx.message.guild
         members = server.members
