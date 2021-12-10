@@ -76,11 +76,13 @@ class Character:
     #         return Character(_profile, soup_object, num, discord_name)
 
     @classmethod
-    async def from_num(self, ctx, character, discord_name="Unknown"):
+    async def from_num(self, ctx, character):
         from ..resources.forum_metadata import Metadata
 
         metadata = Metadata()
         char_profile = await metadata.get_character(ctx, character)
+        if char_profile == None:
+            await ctx.send(f"Character number {character} has no posts. Make a post with this character and try again.")
         return char_profile
 
     @property
