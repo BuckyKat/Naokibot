@@ -2,6 +2,7 @@ import datetime
 import json
 import re
 from typing import Any
+import subprocess
 
 import discord
 from babel.dates import format_timedelta
@@ -10,6 +11,7 @@ from redbot.core import Config, commands
 from .src.character import Character
 from .src.forum_metadata import Metadata
 from .src.user_profile import UserProfile
+from .src.scry import *
 
 # HELPER FUNCTIONS
 def _name(self, user, max_length):
@@ -289,6 +291,17 @@ class TFS(commands.Cog):
         ).character_profiles() as profile_dict:
             profile_dict.clear()
         await ctx.send("Cache cleared.")
+
+    @commands.command()
+    async def scry(self, ctx, query: str):
+        process = subprocess.Popen(['grep', '-R', *query.split(' '), 'src/data/'], stdout=subprocess.PIPE)
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                print(f'==========={output.strip()}')
+        rc = process.poll()
 
     async def _get_discord_id_by_display_name(self, search_name, ctx, users):
         results = []
