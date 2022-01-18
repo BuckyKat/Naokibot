@@ -1,3 +1,0 @@
-January 4, 2022
-
-Add fix to update cached profiles with data from the website. May take a minute for updates to go into effect.

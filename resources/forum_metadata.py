@@ -95,13 +95,6 @@ class Metadata:
         ).no_posts() as no_posts:
             return int(character) in no_posts
 
-    async def existing_profile_update(self, ctx: Context, character: int):
-        char = await self._fetch_character_profile(ctx, character)
-        async with self.config.custom(
-            "metadata", ctx.guild.id
-        ).character_profiles() as profile_dict:
-            profile_dict.update({character: char.embed.to_dict()})
-
     async def _update_characters(self, ctx: Context, character=None, timeout=0):
         """Finds the last character and searches the forum for characters after that.
         Characters that are found are updated in the config.

@@ -258,11 +258,6 @@ class TFS(commands.Cog):
             await user.remove_roles(members, guests)
             await user.add_roles(inactive)
             await ctx.send("Updated role to Member (Inactive) for " + user.name + ".")
-        
-        # update the cached data
-        metadata = Metadata()
-        for char in characters:
-            await metadata.existing_profile_update(ctx, char)
 
     @commands.admin_or_permissions(manage_roles=True)
     @commands.command()
