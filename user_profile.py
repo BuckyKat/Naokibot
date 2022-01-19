@@ -1,7 +1,5 @@
 import datetime
 
-from pygments.lexer import this
-
 from redbot.core import Config
 
 from .character import Character
@@ -75,12 +73,12 @@ class UserProfile:
             await self.data.user(user).database.set([])
             await self.data.user(user).characters.set([])
 
-    async def update_active(self, ctx, user):
+    async def update_active(self, user):
         async with self.data.user(user).characters() as char_list:
             for num in char_list:
-                this_character = await Character.from_num(ctx, num)
-                if this_character and "footer" in this_character.keys():
-                    active = this_character["footer"]["text"].split(" | ") == "Active"
+                this_character = await Character.from_num(num)
+                if this_character:
+                    active = this_character.active
                     if active:
                         await self.data.user(user).active.set(True)
                         break
@@ -90,26 +88,24 @@ class UserProfile:
                     continue
         return True
 
-    async def update_names(self, ctx, user):
+    async def update_names(self, user):
         name_list = []
         async with self.data.user(user).characters() as char_list:
             for num in char_list:
-                this_character = await Character.from_num(ctx, num)
+                this_character = await Character.from_num(num)
                 if this_character:
-                    name = this_character["author"]["name"]
+                    name = this_character.display_name
                     name_list.append(name)
             await self.data.user(user).display_names.set(name_list)
         return True
 
-    async def update_posts(self, ctx, user):
+    async def update_posts(self, user):
         post_count = 0
         async with self.data.user(user).characters() as char_list:
             for num in char_list:
-                this_character = await Character.from_num(ctx, num)
+                this_character = await Character.from_num(num)
                 if this_character:
-                    for field in this_character["fields"]:
-                        if "Post Count" in field["name"]:
-                            posts = field["value"]
-                            post_count += int(posts)
+                    posts = this_character.posts
+                    post_count += int(posts)
             await self.data.user(user).posts.set(post_count)
         return True
