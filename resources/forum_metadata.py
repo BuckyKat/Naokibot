@@ -1,4 +1,3 @@
-from ctypes.wintypes import CHAR
 import aiohttp
 import discord
 from bs4 import BeautifulSoup
@@ -69,7 +68,6 @@ class Metadata:
         ).character_profiles() as profile_dict:
             if await self._character_exists(ctx, char_id):
                 return profile_dict[str(char_id)]
-        return None
 
     async def get_character_id(self, ctx, character):
         """This will take a character name or number and return the number of that charadcter."""
@@ -85,15 +83,6 @@ class Metadata:
             if await self._character_exists(ctx, character):
                 return character
         return None
-    
-    async def character_has_no_posts(self, ctx, character: str):
-        if type(character) == str:
-            if not character.isdigit():
-                return False
-        async with self.config.custom(
-            "metadata", ctx.guild.id
-        ).no_posts() as no_posts:
-            return int(character) in no_posts
 
     async def _update_characters(self, ctx: Context, character=None, timeout=0):
         """Finds the last character and searches the forum for characters after that.
@@ -107,8 +96,6 @@ class Metadata:
 
         if type(character) == int:
             char = await self._fetch_character_profile(ctx, character)
-            if char == 'no posts':
-                return
             async with self.config.custom(
                 "metadata", ctx.guild.id
             ).character_profiles() as profile_dict:
