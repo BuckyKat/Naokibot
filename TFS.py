@@ -213,6 +213,9 @@ class TFS(commands.Cog):
         """Updates a given user's profile, defaults to you"""
         if user is None:
             user = ctx.message.author
+        if user.bot:
+            await ctx.send(user.name + " is a bot, so I won't update them. :robot:")
+            return
         async with ctx.typing():
             await self.profiles.update_names(user)
             await ctx.send("Display names updated for " + user.name + ".")

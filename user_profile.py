@@ -81,12 +81,14 @@ class UserProfile:
                     active = this_character.active
                     if active:
                         await self.data.user(user).active.set(True)
-                        break
+                        return True
                     else:
                         continue
                 else:
                     continue
-        return True
+            await self.data.user(user).active.set(False) # If it gets through every character in the list without
+                                                         # updating to true, update to false.
+        return False
 
     async def update_names(self, user):
         name_list = []
