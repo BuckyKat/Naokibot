@@ -6,6 +6,7 @@ import discord
 from babel.dates import format_timedelta
 from redbot.core import Config, commands
 from redbot.core.commands import Context
+from redbot.core.utils.chat_formatting import box, pagify
 
 from .character import Character
 from .user_profile import UserProfile
@@ -280,6 +281,43 @@ class TFS(commands.Cog):
             + "\nYou can put in multiple numbers separated by commas to claim multiple characters at once, "
             "and if you make a mistake, you can use the `!unclaim` command to remove characters."
         )
+
+    @commands.command(aliases=['pl'])
+    async def postleaderboard(self, ctx, top: int = 10):
+        """Prints out the posts leaderboard.
+        Defaults to top 10. Use negative numbers to reverse the leaderboard.
+        """
+        reverse = True
+        if top == 0:
+            top = 10
+        elif top < 0:
+            reverse = False
+            top = -top
+        server = ctx.message.guild
+        members = server.members
+        member_post_dict = {}
+        for member in members:
+            posts = await self.profiles.get_posts(member)
+            member_post_dict[member.name] = posts
+        members_sorted = sorted(
+            member_post_dict, key=member_post_dict.__getitem__, reverse=reverse
+        )
+
+        if len(members_sorted) < top:
+            top = len(members_sorted)
+        topten = members_sorted[:top]
+        highscore = ""
+        place = 1
+        for member in topten:
+            highscore += str(place).ljust(len(str(top)) + 1)
+            highscore += "{} | ".format(member).ljust(18 - len(str(member_post_dict[member])))
+            highscore += str(member_post_dict[member]) + "\n"
+            place += 1
+        if highscore != "":
+            for page in pagify(highscore, shorten_by=12):
+                await ctx.send(box(page, lang="py"))
+        else:
+            await ctx.send("No one has any posts 🙁")
 
     async def _search_users_by_display_name(self, search_name, ctx, users):
         results = []
