@@ -1,4 +1,4 @@
-import datetime
+import arrow
 
 from redbot.core import Config
 
@@ -25,7 +25,7 @@ class UserProfile:
             "registered": None,
             "last_post": None,
             "active": False,
-            "updated": datetime.datetime.now(),
+            "updated": arrow.utcnow().isoformat(),  # store as string
             "display_names": [],
         }
 

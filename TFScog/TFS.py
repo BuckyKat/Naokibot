@@ -1,4 +1,4 @@
-import datetime
+import arrow
 import re
 from typing import Any
 
@@ -83,8 +83,11 @@ class TFS(commands.Cog):
         timest = this_character.last_post_time
         await ctx.send(str(timest))
         if timest:
-            now = datetime.datetime.now()
-            time_diff = timest - now
+            now = arrow.utcnow()
+            # Parse timest to Arrow if needed:
+            if not isinstance(timest, arrow.Arrow):
+                timest = arrow.get(timest)
+            time_diff = now - timest  # arrow durations are timedelta compatible
             fancy_time = format_timedelta(time_diff, locale="en_US") + " ago"
             await ctx.send(fancy_time)
         await ctx.send(this_character.last_post_id)
