@@ -1,0 +1,11 @@
+{
+    "author": ["Bucky"],
+    "install_msg": "",
+    "name": "TFScog",
+    "disabled": false,
+    "short": "",
+    "description": "TFS server utilities cog",
+    "tags": [],
+    "requirements": ["beautifulsoup4"],
+    "hidden": false
+}
