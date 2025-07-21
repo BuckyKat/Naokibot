@@ -81,7 +81,7 @@ class Character:
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
         }
-            try:
+        try:
             async with aiohttp.ClientSession(headers=headers) as session:
                 try:
                     html = await fetch(session, recent_url)
