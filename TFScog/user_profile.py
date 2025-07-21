@@ -76,19 +76,19 @@ class UserProfile:
     async def update_active(self, user):
         async with self.data.user(user).characters() as char_list:
             for num in char_list:
-                this_character = await Character.from_num(num)
-                if this_character:
-                    active = this_character.active
-                    if active:
+                try:
+                    this_character = await Character.from_num(num)
+                    if this_character and this_character.active:
                         await self.data.user(user).active.set(True)
                         return True
-                    else:
-                        continue
-                else:
-                    continue
-            await self.data.user(user).active.set(False) # If it gets through every character in the list without
-                                                         # updating to true, update to false.
+                except Exception as e:
+                    # Could log the error if needed
+                    print(f"Error checking activity for character {num}: {e}")
+                    continue  # Treat error as "not active"
+            # If no characters were found active (or all errored), mark as inactive
+            await self.data.user(user).active.set(False)
         return False
+
 
     async def update_names(self, user):
         name_list = []
@@ -111,9 +111,19 @@ class UserProfile:
         post_count = 0
         async with self.data.user(user).characters() as char_list:
             for num in char_list:
-                this_character = await Character.from_num(num)
-                if this_character:
-                    posts = this_character.posts
-                    post_count += int(posts)
+                try:
+                    this_character = await Character.from_num(num)
+                    if this_character:
+                        posts = this_character.posts
+                        post_count += int(posts)
+                    else:
+                        # Character not found or returned None — count as 0
+                        continue
+                except Exception as e:
+                    # Log or print the error if needed
+                    print(f"Error getting posts for character {num}: {e}")
+                    # Treat error as 0 posts (no increment needed)
+                    continue
             await self.data.user(user).posts.set(post_count)
         return True
+
