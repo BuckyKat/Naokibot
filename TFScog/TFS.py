@@ -192,7 +192,7 @@ class TFS(commands.Cog):
         active = await self.profiles.get_active(user)
 
         em = discord.Embed(title=user.nick)
-        em.set_thumbnail(url=user.avatar_url)
+        em.set_thumbnail(url=user.display_avatar_url)
         em.set_author(name=user.name)
 
         em.add_field(name="Post Count:", value=posts, inline=True)
