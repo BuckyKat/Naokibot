@@ -121,7 +121,11 @@ class TFS(commands.Cog):
             number = args
             name = await self._search_users_by_character_id(number, ctx, users)
             name = self._list_to_str(name)
-        this_character = await Character.from_num(number, name)
+        try:
+            this_character = await Character.from_num(number, name)
+        except ValueError as e:
+            await ctx.send((f"❌ {str(e)}")
+            return
         async with ctx.typing():
             em = this_character.embed
             await ctx.send(embed=em)

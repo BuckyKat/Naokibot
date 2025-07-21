@@ -63,15 +63,41 @@ class Character:
         self.number = number
         self.discord_name = discord_name
 
-    @classmethod
-    async def from_num(cls, num, discord_name=None):
-        recent_url = "http://themistborneisles.boards.net/user/{num}/recent"
-        async with aiohttp.ClientSession() as session:
-            html = await fetch(session, recent_url)
-            soup_object = BeautifulSoup(html, "html.parser")
-        _profile = soup_object.find(class_="mini-profile")
-        if _profile:
+import logging
+from aiohttp import ClientError
+
+log = logging.getLogger(__name__)
+
+@classmethod
+async def from_num(cls, num, discord_name=None):
+    recent_url = f"http://themistborneisles.boards.net/user/{num}/recent"
+
+    try:
+        async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as session:
+            try:
+                html = await fetch(session, recent_url)
+            except ClientError as e:
+                raise ValueError(f"Failed to fetch character page due to network error: {e}") from e
+
+            if not html:
+                raise ValueError(f"Empty HTML response for character {num} at {recent_url}")
+
+            try:
+                soup_object = BeautifulSoup(html, "html.parser")
+            except Exception as e:
+                log.error(f"HTML parsing error for character {num}: {e}")
+                raise ValueError(f"Failed to parse HTML for character {num}") from e
+
+            _profile = soup_object.find(class_="mini-profile")
+            if not _profile:
+                log.warning(f"'mini-profile' class not found for character {num}")
+                raise ValueError(f"Could not find a mini-profile for character {num}")
+
             return cls(_profile, soup_object, num, discord_name)
+
+    except Exception as e:
+        raise ValueError(f"Unexpected error in from_num for character {num}: {e}")
+
 
 
     @property
