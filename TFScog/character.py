@@ -65,7 +65,7 @@ class Character:
 
     @classmethod
     async def from_num(cls, num, discord_name=None):
-        recent_url = f"http://themistborneisles.boards.net/user/{num}/recent"
+        recent_url = "http://themistborneisles.boards.net/user/{num}/recent"
         async with aiohttp.ClientSession() as session:
             html = await fetch(session, recent_url)
             soup_object = BeautifulSoup(html, "html.parser")
