@@ -130,53 +130,53 @@ class TFS(commands.Cog):
             em = this_character.embed
             await ctx.send(embed=em)
 
-@commands.command()
-async def claim(self, ctx, *, arg):
-    """Adds a list of characters to your user"""
-    numbers = list(filter(None, re.sub("[^0-9]+", ",", arg).split(",")))
-    await self.profiles.sort_characters(ctx.author)
-
-    failed_nums = []
-    for num_str in numbers:
-        try:
-            num = int(num_str)
-            # Try loading the character to verify it exists
-            this_character = await Character.from_num(num)
-            if this_character is None:
-                failed_nums.append(num)
-                continue
-            await self.profiles.add_character(ctx.author, num)
-        except ValueError as e:
-            failed_nums.append(num_str)
-        except Exception as e:
-            failed_nums.append(num_str)
-
-    async with ctx.typing():
+    @commands.command()
+    async def claim(self, ctx, *, arg):
+        """Adds a list of characters to your user"""
+        numbers = list(filter(None, re.sub("[^0-9]+", ",", arg).split(",")))
         await self.profiles.sort_characters(ctx.author)
-        characters = await self.profiles.get_characters(ctx.author)
-        await self.profiles.update_names(ctx.author)
-        name_list = await self.profiles.get_displaynames(ctx.author)
 
-    await ctx.send(
-        f":white_check_mark: Success. There are now {len(characters)} characters registered to you: "
-        + self._list_to_str(name_list)
-    )
+        failed_nums = []
+        for num_str in numbers:
+            try:
+                num = int(num_str)
+                # Try loading the character to verify it exists
+                this_character = await Character.from_num(num)
+                if this_character is None:
+                    failed_nums.append(num)
+                    continue
+                await self.profiles.add_character(ctx.author, num)
+            except ValueError as e:
+                failed_nums.append(num_str)
+            except Exception as e:
+                failed_nums.append(num_str)
 
-    if failed_nums:
+        async with ctx.typing():
+            await self.profiles.sort_characters(ctx.author)
+            characters = await self.profiles.get_characters(ctx.author)
+            await self.profiles.update_names(ctx.author)
+            name_list = await self.profiles.get_displaynames(ctx.author)
+
         await ctx.send(
-            ":warning: Could not find/load these characters: "
-            + ", ".join(str(n) for n in failed_nums)
-            + ". Please check the IDs and try again."
+            f":white_check_mark: Success. There are now {len(characters)} characters registered to you: "
+            + self._list_to_str(name_list)
         )
 
-    if len(characters) > len(name_list):
-        await ctx.send(
-            ":warning: At least one of your characters hasn't made any posts yet, which means that I can't see "
-            "them. For any characters whose names aren't listed, post with them in any thread and then do the "
-            "command `!update`."
-        )
-    else:
-        await ctx.send(f"Use the command `{ctx.prefix}update` to update your profile.")
+        if failed_nums:
+            await ctx.send(
+                ":warning: Could not find/load these characters: "
+                + ", ".join(str(n) for n in failed_nums)
+                + ". Please check the IDs and try again."
+            )
+
+        if len(characters) > len(name_list):
+            await ctx.send(
+                ":warning: At least one of your characters hasn't made any posts yet, which means that I can't see "
+                "them. For any characters whose names aren't listed, post with them in any thread and then do the "
+                "command `!update`."
+            )
+        else:
+            await ctx.send(f"Use the command `{ctx.prefix}update` to update your profile.")
 
 
     @commands.command()
