@@ -66,9 +66,23 @@ class Character:
     @classmethod
     async def from_num(cls, num, discord_name=None):
         recent_url = f"http://themistborneisles.boards.net/user/{num}/recent"
-
-        try:
-            async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as session:
+        
+        # Headers to mimic a real browser
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/114.0.0.0 Safari/537.36"
+            ),
+            "Accept": (
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            ),
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+        }
+            try:
+            async with aiohttp.ClientSession(headers=headers) as session:
                 try:
                     html = await fetch(session, recent_url)
                 except ClientError as e:
@@ -80,12 +94,10 @@ class Character:
                 try:
                     soup_object = BeautifulSoup(html, "html.parser")
                 except Exception as e:
-                    log.error(f"HTML parsing error for character {num}: {e}")
                     raise ValueError(f"Failed to parse HTML for character {num}") from e
 
                 _profile = soup_object.find(class_="mini-profile")
                 if not _profile:
-                    log.warning(f"'mini-profile' class not found for character {num}")
                     raise ValueError(f"Could not find a mini-profile for character {num}")
 
                 return cls(_profile, soup_object, num, discord_name)
