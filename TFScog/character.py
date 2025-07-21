@@ -181,8 +181,14 @@ class Character:
     @property
     def last_post_thread(self):
         _soup = self.soup
-        thread_class = _soup.find(class_="js-thread__title-link")
-        return str(thread_class.contents[0])
+        # Find the <a> tag with class 'js-thread__link' or 'thread-link'
+        thread_link = _soup.find("a", class_="js-thread__link")
+        if not thread_link:
+            thread_link = _soup.find("a", class_="thread-link")
+        if thread_link and thread_link.contents:
+            return str(thread_link.contents[0])
+        else:
+            return "No thread found"
 
     @property
     def last_post_id(self):
