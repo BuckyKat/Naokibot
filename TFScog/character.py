@@ -246,13 +246,10 @@ class Character:
         if last_post is None:
             return False
         else:
-            now = datetime.datetime.now()
-            time_diff = last_post - now
-            active_time = datetime.timedelta(days=-30)
-            if (time_diff < active_time) is False:
-                return True
-            else:
-                return False
+            now = arrow.utcnow()
+            last_post_arrow = arrow.get(last_post)
+            # Check if last_post is within 30 days from now
+            return (now - last_post_arrow).days <= 30
 
     @property
     def register_date(self):
