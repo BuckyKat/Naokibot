@@ -209,21 +209,21 @@ class Character:
         if date_class is None:
             return None
         else:
-            unix_time = str(date_class.contents).split('"')[3]
-            unix_time = float(unix_time[: (len(unix_time) - 3)])
-
-            date_object = datetime.datetime.fromtimestamp(unix_time)
-            return date_object
+            try:
+                unix_time_str = str(date_class.contents).split('"')[3]
+                unix_time = float(unix_time_str[:-3])  # Remove last 3 chars (usually "000" ms)
+                return arrow.get(unix_time)
+            except (IndexError, ValueError):
+                return None
 
     @property
     def last_post_time_fancy(self):
         time_stamp = self.last_post_time
-        if time_stamp:
-            now = arrow.utcnow()
-            time_diff = now - arrow.get(time_stamp)
-            return format_timedelta(time_diff, locale="en_US") + " ago"
+        if isinstance(time_stamp, Arrow):
+            return time_stamp.humanize(locale="en_US")
         else:
             return "Never"
+
 
     @property
     def last_post_markdown(self):
