@@ -94,10 +94,16 @@ class UserProfile:
         name_list = []
         async with self.data.user(user).characters() as char_list:
             for num in char_list:
-                this_character = await Character.from_num(num)
-                if this_character:
-                    name = this_character.display_name
-                    name_list.append(name)
+                try:
+                    this_character = await Character.from_num(num)
+                    if this_character:
+                        name = this_character.display_name
+                    else:
+                        name = f"Unknown {num}"
+                except Exception as e:
+                    print(f"Error getting character {num}: {e}")
+                    name = f"Unknown {num}"
+                name_list.append(name)
             await self.data.user(user).display_names.set(name_list)
         return True
 
