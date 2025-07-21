@@ -284,9 +284,11 @@ class TFS(commands.Cog):
             "right next to that. "
             + " (If you're on multiple proboards forums, make sure you're copying from the TMI section!)"
             + '\n > It should look something like this: `["607","1186","1310","813"]`'
-            + "\n In #bot_stuff, use the command `!claim [paste your numbers]` Then you're done! Do this "
-            "for all your characters to keep your `!profile` up to date!"
+            + f"\n In #bot_stuff, use the command `{ctx.prefix}claim [paste your numbers]` Then you're done! Do this "
+            + f"for all your characters to keep your `{ctx.prefix}profile` up to date!"
         )
+
+
 
     @commands.command()
     async def howtoclaim(self, ctx):
@@ -294,11 +296,12 @@ class TFS(commands.Cog):
         await ctx.send(
             "Visit your character's page by clicking on their name or clicking on 'CHARACTER' at the top "
             "between 'HOME' and 'MESSAGING' "
-            + "\nLook at the URL for that page, and paste the number from the end of that URL as an "
-            "argument for the `!claim` command! "
-            + "\nYou can put in multiple numbers separated by commas to claim multiple characters at once, "
-            "and if you make a mistake, you can use the `!unclaim` command to remove characters."
+            + f"\nLook at the URL for that page, and paste the number from the end of that URL as an "
+            + f"argument for the `{ctx.prefix}claim` command! "
+            + f"\nYou can put in multiple numbers separated by commas to claim multiple characters at once, "
+            + f"and if you make a mistake, you can use the `{ctx.prefix}unclaim` command to remove characters."
         )
+
 
     @commands.command(aliases=['pl'])
     async def postleaderboard(self, ctx, top: int = 10):
