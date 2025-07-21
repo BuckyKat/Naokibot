@@ -124,7 +124,7 @@ class TFS(commands.Cog):
         try:
             this_character = await Character.from_num(number, name)
         except ValueError as e:
-            await ctx.send((f"❌ {str(e)}")
+            await ctx.send(f"❌ {str(e)}")
             return
         async with ctx.typing():
             em = this_character.embed
